@@ -53,11 +53,10 @@ export default function Trilha() {
   const viewableAttachments = [...imageAttachments, ...pdfAttachments];
   const currentAttachment = viewableAttachments[selectedAttachmentIndex];
   
-  // Construir URL completa para os anexos
-  const getAttachmentUrl = (caminho) => {
-    // Ajuste aqui para a URL base da sua API
-    const baseUrl = 'http://localhost:8000/storage/'; // Altere conforme necessário
-    return `${baseUrl}${caminho}`;
+  // Obter URL do anexo (usar url_presignada se disponível)
+  const getAttachmentUrl = (documento) => {
+    // Usar url_presignada (URL da AWS S3) ou fallback para caminho
+    return documento.url || documento.caminho;
   };
   
   return (
@@ -92,13 +91,13 @@ export default function Trilha() {
                     <div className={`flex-1 flex items-center justify-center overflow-hidden ${isDarkMode ? 'bg-slate-900/50' : 'bg-gray-100'}`}>
                       {currentAttachment?.tipo?.startsWith('image/') || currentAttachment?.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                         <img 
-                          src={getAttachmentUrl(currentAttachment.caminho)} 
+                          src={getAttachmentUrl(currentAttachment)} 
                           alt={currentAttachment.nome}
                           className="w-full h-full object-contain"
                         />
                       ) : currentAttachment?.tipo === 'application/pdf' || currentAttachment?.nome?.match(/\.pdf$/i) ? (
                         <iframe
-                          src={getAttachmentUrl(currentAttachment.caminho)}
+                          src={getAttachmentUrl(currentAttachment)}
                           className="w-full h-full border-0"
                           title={currentAttachment.nome}
                         />
@@ -126,7 +125,7 @@ export default function Trilha() {
                               >
                                 {isImage ? (
                                   <img 
-                                    src={getAttachmentUrl(attachment.caminho)} 
+                                    src={getAttachmentUrl(attachment)} 
                                     alt={attachment.nome}
                                     className="w-full h-full object-cover"
                                   />
@@ -152,7 +151,7 @@ export default function Trilha() {
                       {otherAttachments.map((doc, index) => (
                         <a
                           key={index}
-                          href={getAttachmentUrl(doc.caminho)}
+                          href={getAttachmentUrl(doc)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={`flex items-center gap-3 p-4 border rounded-xl transition-all duration-200 group ${isDarkMode ? 'bg-slate-800/60 border-slate-600/50 hover:bg-slate-700/60 hover:border-slate-500/50' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'}`}

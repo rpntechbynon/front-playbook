@@ -28,7 +28,8 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
   const fetchAllTrilhas = async () => {
     try {
       const data = await TrilhaService.buscarTrilhas();
-      const flattenedTrilhas = flattenTrilhas(data);
+      const trilhasFormatadas = TrilhaService.transformarParaFormato(data);
+      const flattenedTrilhas = flattenTrilhas(trilhasFormatadas);
       setAllTrilhas(flattenedTrilhas);
     } catch (error) {
       console.error("Erro ao carregar trilhas:", error);

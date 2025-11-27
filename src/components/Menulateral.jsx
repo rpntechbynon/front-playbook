@@ -97,8 +97,9 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
   const fetchDecisoes = async () => {
     try {
       const data = await TrilhaService.buscarTrilhas();
-      setDecisoes(data);
-      setFilteredDecisoes(data);
+      const trilhasFormatadas = TrilhaService.transformarParaFormato(data);
+      setDecisoes(trilhasFormatadas);
+      setFilteredDecisoes(trilhasFormatadas);
       setLoading(false);
     } catch (error) {
       console.error("Erro ao carregar decisões:", error);

@@ -161,8 +161,14 @@ const TrilhaService = {
 		return apiData.map(item => ({
 			id: item.id,
 			nome: item.descricao,
+			titulo: item.titulo,
+			descricao: item.descricao,
+			id_pai: item.id_pai,
 			idPai: item.id_pai,
+			go_to: item.go_to,
 			goTo: item.go_to,
+			created_at: item.created_at,
+			updated_at: item.updated_at,
 			criadoEm: item.created_at,
 			atualizadoEm: item.updated_at,
 			documentos: item.documentos ? item.documentos.map(doc => ({
@@ -170,8 +176,10 @@ const TrilhaService = {
 				nome: doc.nome,
 				caminho: doc.caminho,
 				tipo: doc.tipo,
-				url: `${API_BASE_URL.replace('/api', '')}/${doc.caminho}`
+				url: doc.url_presignada || doc.caminho,
+				url_presignada: doc.url_presignada
 			})) : [],
+			all_children: this.transformarEtapas(item.all_children),
 			etapas: this.transformarEtapas(item.all_children),
 		}));
 	},
@@ -184,15 +192,29 @@ const TrilhaService = {
 			id: child.id,
 			titulo: child.titulo || child.descricao,
 			descricao: child.descricao,
+			id_pai: child.id_pai,
 			idPai: child.id_pai,
+			go_to: child.go_to,
 			goTo: child.go_to,
+			created_at: child.created_at,
+			updated_at: child.updated_at,
+			documentos: child.documentos ? child.documentos.map(doc => ({
+				id: doc.id,
+				nome: doc.nome,
+				caminho: doc.caminho,
+				tipo: doc.tipo,
+				url: doc.url_presignada || doc.caminho,
+				url_presignada: doc.url_presignada
+			})) : [],
 			anexos: child.documentos ? child.documentos.map(doc => ({
 				id: doc.id,
 				nome: doc.nome,
 				caminho: doc.caminho,
 				tipo: doc.tipo,
-				url: `${API_BASE_URL.replace('/api', '')}/${doc.caminho}`
+				url: doc.url_presignada || doc.caminho,
+				url_presignada: doc.url_presignada
 			})) : [],
+			all_children: this.transformarEtapas(child.all_children),
 			subEtapas: this.transformarEtapas(child.all_children),
 		}));
 	},
