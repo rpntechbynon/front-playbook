@@ -5,7 +5,7 @@ import Trilha from './pages/Trilha';
 
 function AppRouter() {
   return (
-    <Router>
+    <Router basename="/playbook">
       <Routes>
         <Route path="/home" element={<Home />} />
         <Route path="/about" element={<div>About Page</div>} />
