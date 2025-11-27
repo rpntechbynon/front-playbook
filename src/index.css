@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+/* Configuração do tema claro */
+:root {
+  color-scheme: light;
+}
+
+/* Scrollbar customizada - Modo Claro */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(229, 231, 235, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #9ca3af, #6b7280);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #6b7280, #4b5563);
+}
+
+/* Calendar picker para inputs de data */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  background-color: #f3f4f6;
+  opacity: 1;
+}
+
+/* Estilo global de botões */
+button {
+  cursor: pointer;
+}
+
+/* Transições suaves */
+* {
+  transition-property: background-color, border-color, color;
+  transition-duration: 300ms;
+  transition-timing-function: ease-in-out;
+}
