@@ -12,7 +12,8 @@ export default function TrilhaForm({
 	decisoesDisponiveis,
 	loadingDecisoes,
 	onSave, 
-	onCancel 
+	onCancel,
+	isEditing = false
 }) {
 	const { theme, isDarkMode } = useTheme();
 	
@@ -38,7 +39,7 @@ export default function TrilhaForm({
 		<div className={`rounded-2xl shadow-lg p-6 sm:p-8 border mb-8 ${theme.bg.card} ${theme.border.card}`}>
 			<h2 className={`text-2xl font-bold mb-6 flex items-center gap-2 ${theme.text.primary}`}>
 				<Plus className={`w-6 h-6 ${theme.icon.default}`} />
-				Nova Trilha de Vendas
+				{isEditing ? "Editar Trilha de Vendas" : "Nova Trilha de Vendas"}
 			</h2>
 
 			<div className="mb-6">
@@ -168,7 +169,7 @@ export default function TrilhaForm({
 					onClick={onSave}
 					className={`flex-1 px-6 py-3 text-white font-semibold rounded-xl shadow-md transition-all duration-300 hover:scale-105 ${isDarkMode ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-blue-500/50' : 'bg-gray-800 hover:bg-gray-900'}`}
 				>
-					Salvar Trilha
+					{isEditing ? "Atualizar Trilha" : "Salvar Trilha"}
 				</button>
 				<button
 					onClick={onCancel}

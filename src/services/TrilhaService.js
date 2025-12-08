@@ -56,6 +56,15 @@ const TrilhaService = {
 				formData.append('go_to', dados.go_to);
 			}
 			
+			// Adicionar produtos no formato correto: produtos[0][produto_id], produtos[0][recomendado], etc
+			if (dados.produtos && dados.produtos.length > 0) {
+				dados.produtos.forEach((produto, index) => {
+					formData.append(`produtos[${index}][produto_id]`, produto.produto_id);
+					formData.append(`produtos[${index}][recomendado]`, produto.recomendado ? 1 : 0);
+					formData.append(`produtos[${index}][ordem]`, produto.ordem !== undefined ? produto.ordem : index);
+				});
+			}
+			
 			// Adicionar arquivos se fornecidos
 			if (dados.arquivos && dados.arquivos.length > 0) {
 				console.log('Enviando arquivos:', dados.arquivos.length);
@@ -112,6 +121,15 @@ const TrilhaService = {
 				formData.append('go_to', dados.go_to);
 			}
 			
+			// Adicionar produtos no formato correto: produtos[0][produto_id], produtos[0][recomendado], etc
+			if (dados.produtos && dados.produtos.length > 0) {
+				dados.produtos.forEach((produto, index) => {
+					formData.append(`produtos[${index}][produto_id]`, produto.produto_id);
+					formData.append(`produtos[${index}][recomendado]`, produto.recomendado ? 1 : 0);
+					formData.append(`produtos[${index}][ordem]`, produto.ordem !== undefined ? produto.ordem : index);
+				});
+			}
+			
 			// Adicionar arquivos (se houver)
 			if (dados.arquivos && dados.arquivos.length > 0) {
 				console.log('Enviando arquivos:', dados.arquivos.length);
@@ -147,6 +165,11 @@ const TrilhaService = {
 				method: 'DELETE',
 			});
 			if (!response.ok) {
+				// Tentar extrair a mensagem de erro do JSON
+				const errorData = await response.json().catch(() => null);
+				if (errorData && errorData.error) {
+					throw new Error(errorData.error);
+				}
 				throw new Error('Erro ao excluir trilha');
 			}
 			return await response.json();
@@ -178,6 +201,39 @@ const TrilhaService = {
 				tipo: doc.tipo,
 				url: doc.url_presignada || doc.caminho,
 				url_presignada: doc.url_presignada
+			})) : [],
+			// Adicionar submenus na trilha principal também
+			submenus: item.submenus ? item.submenus.map(submenu => ({
+				id: submenu.id,
+				titulo: submenu.titulo,
+				descricao: submenu.descricao,
+				decisao_id: submenu.decisao_id,
+				created_at: submenu.created_at,
+				updated_at: submenu.updated_at,
+				documentos: submenu.documentos ? submenu.documentos.map(doc => ({
+					id: doc.id,
+					nome: doc.nome,
+					caminho: doc.caminho,
+					tipo: doc.tipo,
+					url: doc.url_presignada || doc.caminho,
+					url_presignada: doc.url_presignada
+				})) : [],
+				anexos: submenu.documentos ? submenu.documentos.map(doc => ({
+					id: doc.id,
+					nome: doc.nome,
+					caminho: doc.caminho,
+					tipo: doc.tipo,
+					url: doc.url_presignada || doc.caminho,
+					url_presignada: doc.url_presignada
+				})) : []
+			})) : [],
+			// Adicionar produtos na trilha principal
+			produtos: item.produtos ? item.produtos.map(produto => ({
+				id: produto.id,
+				produto_id: produto.id,
+				nome: produto.nome,
+				recomendado: produto.pivot?.recomendado || 0,
+				ordem: produto.pivot?.ordem || 0
 			})) : [],
 			all_children: this.transformarEtapas(item.all_children),
 			etapas: this.transformarEtapas(item.all_children),
@@ -214,6 +270,39 @@ const TrilhaService = {
 				url: doc.url_presignada || doc.caminho,
 				url_presignada: doc.url_presignada
 			})) : [],
+			// Adicionar submenus
+			submenus: child.submenus ? child.submenus.map(submenu => ({
+				id: submenu.id,
+				titulo: submenu.titulo,
+				descricao: submenu.descricao,
+				decisao_id: submenu.decisao_id,
+				created_at: submenu.created_at,
+				updated_at: submenu.updated_at,
+				documentos: submenu.documentos ? submenu.documentos.map(doc => ({
+					id: doc.id,
+					nome: doc.nome,
+					caminho: doc.caminho,
+					tipo: doc.tipo,
+					url: doc.url_presignada || doc.caminho,
+					url_presignada: doc.url_presignada
+				})) : [],
+				anexos: submenu.documentos ? submenu.documentos.map(doc => ({
+					id: doc.id,
+					nome: doc.nome,
+					caminho: doc.caminho,
+					tipo: doc.tipo,
+					url: doc.url_presignada || doc.caminho,
+					url_presignada: doc.url_presignada
+				})) : []
+			})) : [],
+			// Adicionar produtos
+			produtos: child.produtos ? child.produtos.map(produto => ({
+				id: produto.id,
+				produto_id: produto.id,
+				nome: produto.nome,
+				recomendado: produto.pivot?.recomendado || 0,
+				ordem: produto.pivot?.ordem || 0
+			})) : [],
 			all_children: this.transformarEtapas(child.all_children),
 			subEtapas: this.transformarEtapas(child.all_children),
 		}));
@@ -221,13 +310,16 @@ const TrilhaService = {
 
 	// Transformar dados do formato da aplicação para API
 	transformarParaAPI(appData) {
-		return {
+		const dados = {
 			descricao: appData.nome || appData.descricao || appData.titulo,
 			titulo: appData.titulo || null,
 			id_pai: appData.id_pai || null,
 			go_to: appData.go_to || appData.goTo || null,
 			arquivos: appData.arquivos || [],
+			produtos: appData.produtos || []
 		};
+
+		return dados;
 	},
 
 	// Preparar dados para atualização com etapas aninhadas
@@ -244,12 +336,15 @@ const TrilhaService = {
 			goToValue = etapa.subEtapas.map(sub => sub.id).join(',');
 		}
 
-		return {
+		const dados = {
 			descricao: etapa.descricao || etapa.titulo,
 			titulo: etapa.titulo || null,
 			go_to: goToValue,
 			arquivos: arquivosNovos,
+			produtos: etapa.produtos || []
 		};
+
+		return dados;
 	},
 };
 

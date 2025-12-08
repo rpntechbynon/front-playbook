@@ -1,5 +1,5 @@
 import React from "react";
-import { Edit, Trash2, Maximize2, FileText, Image } from "lucide-react";
+import { Edit, Trash2, Maximize2, FileText, Image, Menu, Package } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
 export default function TrilhaCard({ trilha, onViewTree, onEdit, onDelete }) {
@@ -12,16 +12,58 @@ export default function TrilhaCard({ trilha, onViewTree, onEdit, onDelete }) {
 				<div className="flex items-start justify-between mb-2">
 					<div className="flex-1">
 						<h3 className={`text-lg font-bold mb-1 line-clamp-2 ${theme.text.primary}`}>{trilha.nome}</h3>
-						<div className={`flex items-center gap-3 text-xs ${theme.text.tertiary}`}>
-							<span className="flex items-center gap-1">
-								<FileText className="w-3 h-3" />
-								{trilha.etapas?.length || 0} etapas
-							</span>
-							<span className="flex items-center gap-1">
-								<Image className="w-3 h-3" />
-								{trilha.etapas?.reduce((acc, e) => acc + (e.anexos?.length || 0), 0) || 0} anexos
-							</span>
-						</div>
+					<div className={`flex items-center gap-3 text-xs ${theme.text.tertiary}`}>
+						<span className="flex items-center gap-1">
+							<FileText className="w-3 h-3" />
+							{trilha.etapas?.length || 0} etapas
+						</span>
+						<span className="flex items-center gap-1">
+							<Image className="w-3 h-3" />
+							{trilha.etapas?.reduce((acc, e) => acc + (e.anexos?.length || 0), 0) || 0} anexos
+						</span>
+						{(() => {
+							const contarSubmenus = (etapas) => {
+								let total = 0;
+								const processar = (items) => {
+									items?.forEach(item => {
+										total += item.submenus?.length || 0;
+										if (item.subEtapas?.length > 0) processar(item.subEtapas);
+										if (item.all_children?.length > 0) processar(item.all_children);
+									});
+								};
+								processar(etapas);
+								return total;
+							};
+							const totalSubmenus = contarSubmenus(trilha.etapas);
+							return totalSubmenus > 0 ? (
+								<span className={`flex items-center gap-1 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'} font-semibold`}>
+									<Menu className="w-3 h-3" />
+									{totalSubmenus} {totalSubmenus === 1 ? 'submenu' : 'submenus'}
+								</span>
+							) : null;
+						})()}
+						{(() => {
+							const contarProdutos = (etapas) => {
+								let total = 0;
+								const processar = (items) => {
+									items?.forEach(item => {
+										total += item.produtos?.length || 0;
+										if (item.subEtapas?.length > 0) processar(item.subEtapas);
+										if (item.all_children?.length > 0) processar(item.all_children);
+									});
+								};
+								processar(etapas);
+								return total;
+							};
+							const totalProdutos = contarProdutos(trilha.etapas);
+							return totalProdutos > 0 ? (
+								<span className={`flex items-center gap-1 ${isDarkMode ? 'text-green-400' : 'text-green-600'} font-semibold`}>
+									<Package className="w-3 h-3" />
+									{totalProdutos} {totalProdutos === 1 ? 'produto' : 'produtos'}
+								</span>
+							) : null;
+						})()}
+					</div>
 					</div>
 					<div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-md flex-shrink-0 ${isDarkMode ? 'bg-gradient-to-br from-blue-600 to-purple-600' : 'bg-gradient-to-br from-gray-700 to-gray-900'}`}>
 						<span className="text-white font-black text-lg">{trilha.etapas?.length || 0}</span>

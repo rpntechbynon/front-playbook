@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Link, MapPin, ExternalLink, ChevronRight, Layers, Navigation, ArrowRight, Info } from "lucide-react";
+import { Link, MapPin, ExternalLink, ChevronRight, Layers, Navigation, ArrowRight, Info, Package, CheckSquare } from "lucide-react";
 import TrilhaService from "../services/TrilhaService";
 import { useTheme } from "../contexts/ThemeContext";
 
-export default function MenuDireito({ selectedTrilha, onSelectDestination, isMinimized, onToggleMinimize }) {
+export default function MenuDireito({ selectedTrilha, onSelectDestination, isMinimized, onToggleMinimize, onSelectSubmenuDocument }) {
   const { theme, isDarkMode } = useTheme();
   const [destinations, setDestinations] = useState([]);
   const [allTrilhas, setAllTrilhas] = useState([]);
   const [selectedDestinationId, setSelectedDestinationId] = useState(null);
+  const [tooltipProdutoId, setTooltipProdutoId] = useState(null);
 
   useEffect(() => {
     fetchAllTrilhas();
@@ -133,7 +134,7 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
   }
 
   return (
-    <aside className={`w-full h-[calc(100vh-5rem)] border-l shadow-2xl sticky top-20 overflow-hidden flex flex-col transition-all duration-300 backdrop-blur-xl ${isMinimized ? 'items-center' : ''} ${isDarkMode ? 'bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 border-slate-700/60 shadow-black/50' : 'bg-gradient-to-b from-white via-gray-50 to-white border-gray-200 shadow-gray-300/50'}`}>
+    <aside className={`w-full h-[calc(100vh-5rem)] border-l shadow-2xl sticky top-20 overflow-visible flex flex-col transition-all duration-300 backdrop-blur-xl ${isMinimized ? 'items-center' : ''} ${isDarkMode ? 'bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 border-slate-700/60 shadow-black/50' : 'bg-gradient-to-b from-white via-gray-50 to-white border-gray-200 shadow-gray-300/50'}`}>
       {/* Header do Menu */}
       <div className={`p-4 border-b backdrop-blur-md transition-colors duration-300 relative overflow-hidden w-full ${isDarkMode ? 'bg-gradient-to-r from-slate-800/95 via-slate-700/95 to-slate-800/95 border-slate-600/60' : 'bg-gradient-to-r from-gray-100 via-gray-50 to-gray-100 border-gray-200'}`}>
         {/* Efeito de fundo animado */}
@@ -173,7 +174,7 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
 
       {/* Conteúdo do Menu */}
       {!isMinimized && (
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-4 custom-scrollbar">
         {/* Informação da Trilha Selecionada */}
         <div className={`border rounded-xl p-4 shadow-lg ${isDarkMode ? 'bg-gradient-to-br from-slate-800/60 to-slate-700/40 border-slate-600/50' : 'bg-gradient-to-br from-white to-gray-50 border-gray-200'}`}>
           <div className="flex items-start gap-3 mb-3">
@@ -189,6 +190,238 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
             </div>
           </div>
         </div>
+
+        {/* Submenus */}
+        {selectedTrilha.submenus && selectedTrilha.submenus.length > 0 && (
+          <>
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
+              Submenus ({selectedTrilha.submenus.length})
+            </h3>
+            {selectedTrilha.submenus.map((submenu, index) => {
+              const colorClasses = getColorClasses(index);
+              
+              return (
+                <div
+                  key={submenu.id}
+                  className={`w-full bg-gradient-to-br ${colorClasses.bg} border ${colorClasses.border} rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 backdrop-blur-sm group`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Ícone */}
+                    <div className={`flex-shrink-0 ${colorClasses.icon} rounded-lg p-2.5 transition-all duration-300 group-hover:scale-110 shadow-lg`}>
+                      <Layers className="w-5 h-5" />
+                    </div>
+
+                    {/* Conteúdo */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs font-black ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Ordem: {submenu.ordem}</span>
+                      </div>
+                      <p className={`text-sm font-bold leading-tight mb-1 transition-colors duration-300 ${isDarkMode ? 'text-slate-100 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-900'}`}>
+                        {submenu.titulo}
+                      </p>
+                      <p className={`text-xs leading-relaxed transition-colors duration-300 ${isDarkMode ? 'text-slate-400 group-hover:text-slate-300' : 'text-gray-600 group-hover:text-gray-700'}`}>
+                        {submenu.descricao}
+                      </p>
+                      
+                      {/* Documentos do Submenu */}
+                      {submenu.documentos && submenu.documentos.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-slate-600/30">
+                          <p className={`text-xs font-semibold mb-2 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                            📎 {submenu.documentos.length} {submenu.documentos.length === 1 ? 'Documento' : 'Documentos'}
+                          </p>
+                          <div className="space-y-2">
+                            {submenu.documentos.map((doc, docIndex) => {
+                              const isImage = doc.tipo?.startsWith('image/');
+                              const isPdf = doc.tipo === 'application/pdf' || doc.nome?.match(/\.pdf$/i);
+                              const isViewable = isImage || isPdf;
+                              
+                              return isViewable ? (
+                                <button
+                                  key={doc.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onSelectSubmenuDocument) {
+                                      onSelectSubmenuDocument(doc);
+                                    }
+                                  }}
+                                  className={`w-full flex items-center gap-2 p-2 rounded-lg transition-all ${isDarkMode ? 'bg-slate-700/40 hover:bg-slate-700/60' : 'bg-gray-100 hover:bg-gray-200'}`}
+                                >
+                                  <div className={`p-1.5 rounded ${isDarkMode ? 'bg-purple-500/20' : 'bg-purple-100'}`}>
+                                    {isImage ? (
+                                      <img src={doc.url_presignada || doc.caminho} alt={doc.nome} className="w-4 h-4 object-cover rounded" />
+                                    ) : (
+                                      <ExternalLink className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                                    )}
+                                  </div>
+                                  <span className={`text-xs truncate flex-1 text-left ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                                    {doc.nome}
+                                  </span>
+                                </button>
+                              ) : (
+                                <a
+                                  key={doc.id}
+                                  href={doc.url_presignada || doc.caminho}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`flex items-center gap-2 p-2 rounded-lg transition-all ${isDarkMode ? 'bg-slate-700/40 hover:bg-slate-700/60' : 'bg-gray-100 hover:bg-gray-200'}`}
+                                >
+                                  <div className={`p-1.5 rounded ${isDarkMode ? 'bg-purple-500/20' : 'bg-purple-100'}`}>
+                                    <ExternalLink className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                                  </div>
+                                  <span className={`text-xs truncate flex-1 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                                    {doc.nome}
+                                  </span>
+                                </a>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Efeito de brilho no hover */}
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {/* Produtos */}
+        {selectedTrilha.produtos && selectedTrilha.produtos.length > 0 && (
+          <>
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1 mt-4">
+              Produtos ({selectedTrilha.produtos.length})
+            </h3>
+            {selectedTrilha.produtos
+              .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+              .map((produto, index) => {
+              const colorClasses = getColorClasses(index);
+              
+              return (
+                <div
+                  key={produto.id}
+                  className={`w-full bg-gradient-to-br ${colorClasses.bg} border ${colorClasses.border} rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 backdrop-blur-sm group`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Ícone */}
+                    <div className={`flex-shrink-0 ${colorClasses.icon} rounded-lg p-2.5 transition-all duration-300 group-hover:scale-110 shadow-lg`}>
+                      <Package className="w-5 h-5" />
+                    </div>
+
+                    {/* Conteúdo */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs font-black ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Ordem: {produto.ordem || index + 1}</span>
+                        {produto.recomendado == 1 && (
+                          <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isDarkMode ? 'bg-yellow-500/20 text-yellow-400' : 'bg-yellow-100 text-yellow-700'}`}>
+                            <CheckSquare className="w-3 h-3" />
+                            <span>Recomendado</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <p className={`text-sm font-bold leading-tight transition-colors duration-300 ${isDarkMode ? 'text-slate-100 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-900'}`}>
+                          {produto.nome || 'Produto sem nome'}
+                        </p>
+                        {/* Ícone de informação com tooltip */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTooltipProdutoId(tooltipProdutoId === produto.id ? null : produto.id);
+                          }}
+                          className={`flex-shrink-0 ${isDarkMode ? 'text-slate-400 hover:text-slate-300' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                          <Info className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Efeito de brilho no hover */}
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {/* Tooltip dos Produtos - Renderizado fora do container com scroll */}
+        {tooltipProdutoId && selectedTrilha.produtos && (
+          <>
+            {/* Overlay para fechar ao clicar fora */}
+            <div 
+              className="fixed inset-0 z-[99998]"
+              onClick={() => setTooltipProdutoId(null)}
+            />
+            {/* Tooltip */}
+            {selectedTrilha.produtos
+              .filter(p => p.id === tooltipProdutoId)
+              .map(produto => (
+                <div 
+                  key={produto.id}
+                  className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-80 p-4 rounded-xl shadow-2xl z-[99999] ${isDarkMode ? 'bg-slate-800 border-2 border-slate-600' : 'bg-white border-2 border-gray-300'}`}
+                >
+                  {/* Botão fechar */}
+                  <button
+                    onClick={() => setTooltipProdutoId(null)}
+                    className={`absolute top-2 right-2 p-1 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-600'}`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+
+                  <div className="space-y-3 text-sm mt-2">
+                    <h3 className={`font-bold text-base ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>
+                      Informações do Produto
+                    </h3>
+                    <div className="space-y-2">
+                      <div>
+                        <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Nome: </span>
+                        <span className={isDarkMode ? 'text-slate-400' : 'text-gray-600'}>{produto.nome || 'N/A'}</span>
+                      </div>
+                      {produto.descricao && (
+                        <div>
+                          <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Descrição: </span>
+                          <span className={isDarkMode ? 'text-slate-400' : 'text-gray-600'}>{produto.descricao}</span>
+                        </div>
+                      )}
+                      {produto.tipo && (
+                        <div>
+                          <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Tipo: </span>
+                          <span className={isDarkMode ? 'text-slate-400' : 'text-gray-600'}>{produto.tipo}</span>
+                        </div>
+                      )}
+                      {produto.preco && (
+                        <div>
+                          <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Preço: </span>
+                          <span className={isDarkMode ? 'text-slate-400' : 'text-gray-600'}>{produto.preco}</span>
+                        </div>
+                      )}
+                      {produto.link && (
+                        <div>
+                          <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Link: </span>
+                          <a href={produto.link} target="_blank" rel="noopener noreferrer" className={`underline ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}>
+                            Ver produto
+                          </a>
+                        </div>
+                      )}
+                      <div>
+                        <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Recomendado: </span>
+                        <span className={isDarkMode ? 'text-slate-400' : 'text-gray-600'}>{produto.recomendado == 1 ? 'Sim' : 'Não'}</span>
+                      </div>
+                      <div>
+                        <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Ordem: </span>
+                        <span className={isDarkMode ? 'text-slate-400' : 'text-gray-600'}>{produto.ordem}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </>
+        )}
 
         {/* Destinos Disponíveis */}
         {destinations.length > 0 ? (

@@ -10,11 +10,13 @@ export default function Trilha() {
   const [selectedTrilha, setSelectedTrilha] = useState(null);
   const [isMenuDireitoMinimized, setIsMenuDireitoMinimized] = useState(false);
   const [selectedAttachmentIndex, setSelectedAttachmentIndex] = useState(0);
+  const [selectedSubmenuDocument, setSelectedSubmenuDocument] = useState(null);
   const menuLateralRef = useRef();
 
   const handleSelectTrilha = (trilha) => {
     setSelectedTrilha(trilha);
     setSelectedAttachmentIndex(0); // Resetar para o primeiro anexo
+    setSelectedSubmenuDocument(null); // Limpar documento selecionado do submenu
     // Expandir o menu direito se houver go_to
     if (trilha?.go_to) {
       setIsMenuDireitoMinimized(false);
@@ -24,26 +26,67 @@ export default function Trilha() {
   const handleSelectDestination = (destination) => {
     // Quando selecionar um destino no menu direito, atualiza a trilha selecionada
     setSelectedTrilha(destination);
+    setSelectedSubmenuDocument(null); // Limpar documento selecionado do submenu
     // Seleciona a trilha no menu lateral
     if (menuLateralRef.current) {
       menuLateralRef.current.selectTrilha(destination.id);
     }
   };
 
+  const handleSelectSubmenuDocument = (document) => {
+    setSelectedSubmenuDocument(document);
+    // Encontrar o índice do documento nos anexos visualizáveis
+    const allDocs = getAllDocuments();
+    const viewableDocs = allDocs.filter(doc => 
+      doc.tipo?.startsWith('image/') || 
+      doc.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ||
+      doc.tipo === 'application/pdf' || 
+      doc.nome?.match(/\.pdf$/i)
+    );
+    const index = viewableDocs.findIndex(doc => doc.id === document.id);
+    if (index !== -1) {
+      setSelectedAttachmentIndex(index);
+    }
+  };
+
+  // Coletar todos os documentos (da etapa e dos submenus)
+  const getAllDocuments = () => {
+    if (!selectedTrilha) return [];
+    
+    let allDocs = [];
+    
+    // Adicionar documentos da etapa principal
+    if (selectedTrilha.documentos && selectedTrilha.documentos.length > 0) {
+      allDocs = [...selectedTrilha.documentos];
+    }
+    
+    // Adicionar documentos dos submenus
+    if (selectedTrilha.submenus && selectedTrilha.submenus.length > 0) {
+      selectedTrilha.submenus.forEach(submenu => {
+        if (submenu.documentos && submenu.documentos.length > 0) {
+          allDocs = [...allDocs, ...submenu.documentos];
+        }
+      });
+    }
+    
+    return allDocs;
+  };
+
   // Verificar se tem documentos e separar por tipo
-  const hasAttachments = selectedTrilha?.documentos && selectedTrilha.documentos.length > 0;
+  const allDocuments = getAllDocuments();
+  const hasAttachments = allDocuments.length > 0;
   const imageAttachments = hasAttachments 
-    ? selectedTrilha.documentos.filter(doc => 
+    ? allDocuments.filter(doc => 
         doc.tipo?.startsWith('image/') || doc.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
       )
     : [];
   const pdfAttachments = hasAttachments
-    ? selectedTrilha.documentos.filter(doc => 
+    ? allDocuments.filter(doc => 
         doc.tipo === 'application/pdf' || doc.nome?.match(/\.pdf$/i)
       )
     : [];
   const otherAttachments = hasAttachments
-    ? selectedTrilha.documentos.filter(doc => 
+    ? allDocuments.filter(doc => 
         !(doc.tipo?.startsWith('image/') || doc.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i)) &&
         !(doc.tipo === 'application/pdf' || doc.nome?.match(/\.pdf$/i))
       )
@@ -55,8 +98,8 @@ export default function Trilha() {
   
   // Obter URL do anexo (usar url_presignada se disponível)
   const getAttachmentUrl = (documento) => {
-    // Usar url_presignada (URL da AWS S3) ou fallback para caminho
-    return documento.url || documento.caminho;
+    // Usar url_presignada (URL da AWS S3) ou fallback para caminho ou url
+    return documento.url_presignada || documento.url || documento.caminho;
   };
   
   return (
@@ -73,6 +116,7 @@ export default function Trilha() {
         <MenuDireito 
           selectedTrilha={selectedTrilha} 
           onSelectDestination={handleSelectDestination}
+          onSelectSubmenuDocument={handleSelectSubmenuDocument}
           isMinimized={isMenuDireitoMinimized}
           onToggleMinimize={() => setIsMenuDireitoMinimized(!isMenuDireitoMinimized)}
         />

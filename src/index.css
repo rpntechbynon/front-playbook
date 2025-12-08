@@ -23,6 +23,16 @@
   background: linear-gradient(to bottom, #6b7280, #4b5563);
 }
 
+/* Esconder scrollbar mas manter funcionalidade */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
 /* Calendar picker para inputs de data */
 input[type="date"]::-webkit-calendar-picker-indicator {
   background-color: #f3f4f6;

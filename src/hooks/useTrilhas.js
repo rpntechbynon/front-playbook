@@ -14,6 +14,7 @@ export const useTrilhas = () => {
 		try {
 			const dados = await TrilhaService.buscarTrilhas();
 			const trilhasFormatadas = TrilhaService.transformarParaFormato(dados);
+			console.log('Trilhas formatadas com submenus e produtos:', trilhasFormatadas);
 			setTrilhas(trilhasFormatadas);
 		} catch (err) {
 			setError(err.message);

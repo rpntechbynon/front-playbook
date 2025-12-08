@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { UserPlus, TrendingUp, Sun, Moon, AppWindow } from "lucide-react";
+import { UserPlus, TrendingUp, Sun, Moon, AppWindow, Package } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
 
 export default function MenuSuperior() {
@@ -43,6 +43,12 @@ export default function MenuSuperior() {
             <Link to="/cadastro" className={`group relative px-6 py-2.5 rounded-xl ${theme.text.primary} font-semibold ${theme.bg.button} ${isDarkMode ? 'hover:bg-gradient-to-r hover:from-blue-600 hover:to-blue-500' : 'hover:bg-gray-800 hover:text-white'} transition-all duration-300 shadow-md hover:scale-105 flex items-center gap-2`}>
               <UserPlus className="w-5 h-5" />
               Cadastro
+            </Link>
+          </li>
+          <li>
+            <Link to="/produtos" className={`group relative px-6 py-2.5 rounded-xl ${theme.text.primary} font-semibold ${theme.bg.button} ${isDarkMode ? 'hover:bg-gradient-to-r hover:from-green-600 hover:to-green-500' : 'hover:bg-gray-700 hover:text-white'} transition-all duration-300 shadow-md hover:scale-105 flex items-center gap-2`}>
+              <Package className="w-5 h-5" />
+              Produtos
             </Link>
           </li>
           <li>

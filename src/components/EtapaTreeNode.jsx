@@ -1,11 +1,21 @@
 import React from "react";
-import { ChevronDown, ChevronRight, Image, FileText, Plus, Trash2, Edit, Download, Eye, Paperclip } from "lucide-react";
+import { ChevronDown, ChevronRight, Image, FileText, Plus, Trash2, Edit, Download, Eye, Paperclip, Menu, Package, CheckSquare } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
-export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNodes, onToggleNode, onAddChild, onEdit, onRemove, trilhaId }) {
+export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNodes, onToggleNode, onAddChild, onEdit, onRemove, trilhaId, onAddSubmenu, onEditSubmenu, onRemoveSubmenu }) {
 	const { theme, isDarkMode } = useTheme();
-	const hasChildren = etapa.subEtapas && etapa.subEtapas.length > 0;
+	// Suportar tanto all_children (API) quanto subEtapas (fallback)
+	const children = etapa.all_children || etapa.subEtapas || [];
+	const hasChildren = children.length > 0;
 	const isExpanded = expandedNodes[etapa.id];
+	
+	// Estado local para controlar expansão dos submenus (começa minimizado)
+	const [submenusExpanded, setSubmenusExpanded] = React.useState(false);
+	
+	// Estado local para controlar expansão dos produtos (começa minimizado)
+	const [produtosExpanded, setProdutosExpanded] = React.useState(false);
+	
+
 
 	const getLevelColor = (level) => {
 		switch (level) {
@@ -63,11 +73,23 @@ export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNod
 									</p>
 								)}
 							</div>
-							{hasChildren && (
-								<span className={`flex-shrink-0 px-2 py-0.5 text-xs rounded-full font-semibold ${isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-gray-200 text-gray-700'}`}>
-									{etapa.subEtapas.length} sub
-								</span>
-							)}
+							<div className="flex items-center gap-2">
+								{hasChildren && (
+									<span className={`flex-shrink-0 px-2 py-0.5 text-xs rounded-full font-semibold ${isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-gray-200 text-gray-700'}`}>
+										{children.length} sub
+									</span>
+								)}
+								{etapa.submenus && etapa.submenus.length > 0 && (
+									<span className={`flex-shrink-0 px-2 py-0.5 text-xs rounded-full font-semibold ${isDarkMode ? 'bg-purple-600/20 text-purple-400' : 'bg-purple-200 text-purple-700'}`}>
+										{etapa.submenus.length} menu
+									</span>
+								)}
+								{etapa.produtos && etapa.produtos.length > 0 && (
+									<span className={`flex-shrink-0 px-2 py-0.5 text-xs rounded-full font-semibold ${isDarkMode ? 'bg-green-600/20 text-green-400' : 'bg-green-200 text-green-700'}`}>
+										{etapa.produtos.length} prod
+									</span>
+								)}
+							</div>
 						</div>
 						
 						{/* Anexos */}
@@ -125,8 +147,172 @@ export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNod
 								</div>
 							</div>
 						)}
-						{/* Botões de ação */}
-						<div className="flex items-center gap-2 mt-2 flex-wrap">
+						
+					{/* Submenus */}
+					{etapa.submenus && etapa.submenus.length > 0 && (
+						<div className="mt-4">
+							<div 
+								onClick={() => setSubmenusExpanded(!submenusExpanded)}
+								className={`flex items-center gap-2 mb-3 pb-2 border-b cursor-pointer hover:opacity-80 transition-opacity ${isDarkMode ? 'border-purple-500/30' : 'border-purple-200'}`}
+							>
+								<button className={`w-5 h-5 flex items-center justify-center rounded transition-all ${isDarkMode ? 'bg-purple-600/20 text-purple-400 hover:bg-purple-600/30' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'}`}>
+									{submenusExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+								</button>
+								<div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-purple-600/20' : 'bg-purple-100'}`}>
+									<Menu className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+								</div>
+								<span className={`text-sm font-bold ${isDarkMode ? 'text-purple-400' : 'text-purple-700'}`}>
+									Submenus ({etapa.submenus.length})
+								</span>
+							</div>
+							{submenusExpanded && (
+								<div className="space-y-2">
+									{etapa.submenus.map((submenu, i) => (
+										<div 
+											key={submenu.id} 
+											className={`group relative rounded-xl border-2 overflow-hidden transition-all hover:scale-[1.02] ${
+												isDarkMode 
+													? 'bg-gradient-to-r from-purple-900/20 via-purple-800/10 to-transparent border-purple-500/30 hover:border-purple-500/60 hover:shadow-lg hover:shadow-purple-500/20' 
+													: 'bg-gradient-to-r from-purple-50 via-purple-25 to-transparent border-purple-200 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-200/50'
+											}`}
+										>
+											{/* Barra lateral colorida */}
+											<div className={`absolute left-0 top-0 bottom-0 w-1 ${isDarkMode ? 'bg-gradient-to-b from-purple-400 to-pink-500' : 'bg-gradient-to-b from-purple-500 to-pink-600'}`} />
+											
+											<div className="pl-4 pr-3 py-3">
+												<div className="flex items-start gap-3">
+													{/* Ícone e número */}
+													<div className="flex-shrink-0 flex items-center gap-2">
+														<div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${isDarkMode ? 'bg-purple-600/30 text-purple-300' : 'bg-purple-200 text-purple-700'}`}>
+															{i + 1}
+														</div>
+													</div>
+													
+													{/* Conteúdo */}
+													<div className="flex-1 min-w-0">
+														<h5 className={`font-bold text-sm mb-1 ${isDarkMode ? 'text-purple-300' : 'text-purple-900'}`}>
+															{submenu.titulo}
+														</h5>
+														{submenu.descricao && (
+															<p className={`text-xs leading-relaxed ${isDarkMode ? 'text-purple-200/70' : 'text-purple-700/70'}`}>
+																{submenu.descricao}
+															</p>
+														)}
+														
+														{/* Documentos do submenu */}
+														{submenu.documentos && submenu.documentos.length > 0 && (
+															<div className="mt-2 flex items-center gap-1">
+																<Paperclip className={`w-3 h-3 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+																<span className={`text-[10px] font-medium ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>
+																	{submenu.documentos.length} {submenu.documentos.length === 1 ? 'arquivo' : 'arquivos'}
+																</span>
+															</div>
+														)}
+													</div>
+													
+													{/* Botões de ação */}
+													<div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+														{onEditSubmenu && (
+															<button
+																onClick={(e) => {
+																	e.stopPropagation();
+																	onEditSubmenu(etapa.id, submenu);
+																}}
+																className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'hover:bg-blue-500/20 text-blue-400' : 'hover:bg-blue-100 text-blue-600'}`}
+																title="Editar submenu"
+															>
+																<Edit className="w-3.5 h-3.5" />
+															</button>
+														)}
+														{onRemoveSubmenu && (
+															<button
+																onClick={(e) => {
+																	e.stopPropagation();
+																	onRemoveSubmenu(submenu.id);
+																}}
+																className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-100 text-red-600'}`}
+																title="Remover submenu"
+															>
+																<Trash2 className="w-3.5 h-3.5" />
+															</button>
+														)}
+													</div>
+												</div>
+											</div>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+					)}
+					
+					{/* Produtos */}
+					{etapa.produtos && etapa.produtos.length > 0 && (
+						<div className="mt-4">
+							<div 
+								onClick={() => setProdutosExpanded(!produtosExpanded)}
+								className={`flex items-center gap-2 mb-3 pb-2 border-b cursor-pointer hover:opacity-80 transition-opacity ${isDarkMode ? 'border-green-500/30' : 'border-green-200'}`}
+							>
+								<button className={`w-5 h-5 flex items-center justify-center rounded transition-all ${isDarkMode ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30' : 'bg-green-100 text-green-600 hover:bg-green-200'}`}>
+									{produtosExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+								</button>
+								<div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-green-600/20' : 'bg-green-100'}`}>
+									<Package className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+								</div>
+								<span className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>
+									Produtos ({etapa.produtos.length})
+								</span>
+							</div>
+							{produtosExpanded && (
+								<div className="space-y-2">
+									{etapa.produtos
+										.sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+										.map((produto, i) => (
+										<div 
+											key={produto.id || i} 
+											className={`group relative rounded-xl border-2 overflow-hidden transition-all hover:scale-[1.02] ${
+												isDarkMode 
+													? 'bg-gradient-to-r from-green-900/20 via-green-800/10 to-transparent border-green-500/30 hover:border-green-500/60 hover:shadow-lg hover:shadow-green-500/20' 
+													: 'bg-gradient-to-r from-green-50 via-green-25 to-transparent border-green-200 hover:border-green-400 hover:shadow-lg hover:shadow-green-200/50'
+											}`}
+										>
+											{/* Barra lateral colorida */}
+											<div className={`absolute left-0 top-0 bottom-0 w-1 ${isDarkMode ? 'bg-gradient-to-b from-green-400 to-emerald-500' : 'bg-gradient-to-b from-green-500 to-emerald-600'}`} />
+											
+											<div className="pl-4 pr-3 py-3">
+												<div className="flex items-start gap-3">
+													{/* Ícone e ordem */}
+													<div className="flex-shrink-0 flex items-center gap-2">
+														<div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${isDarkMode ? 'bg-green-600/30 text-green-300' : 'bg-green-200 text-green-700'}`}>
+															{produto.ordem || i + 1}
+														</div>
+													</div>
+													
+													{/* Conteúdo */}
+													<div className="flex-1 min-w-0">
+														<div className="flex items-center gap-2">
+															<h5 className={`font-bold text-sm ${isDarkMode ? 'text-green-300' : 'text-green-900'}`}>
+																{produto.nome || 'Produto sem nome'}
+															</h5>
+															{produto.recomendado == 1 && (
+																<div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isDarkMode ? 'bg-yellow-500/20 text-yellow-400' : 'bg-yellow-100 text-yellow-700'}`}>
+																	<CheckSquare className="w-3 h-3" />
+																	<span>Recomendado</span>
+																</div>
+															)}
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+					)}
+					
+					{/* Botões de ação */}
+					<div className="flex items-center gap-2 mt-2 flex-wrap">
 							<button
 								onClick={(e) => {
 									e.stopPropagation();
@@ -137,6 +323,17 @@ export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNod
 							>
 								<Plus className="w-3 h-3" />
 								<span>Adicionar</span>
+							</button>
+							<button
+								onClick={(e) => {
+									e.stopPropagation();
+									onAddSubmenu && onAddSubmenu(etapa.id);
+								}}
+								className={`flex items-center gap-1 px-2 py-1 border rounded-md transition-all text-xs font-medium ${isDarkMode ? 'bg-purple-600/20 border-purple-500/30 text-purple-400 hover:bg-purple-600/30' : 'bg-purple-100 border-purple-300 text-purple-700 hover:bg-purple-200'}`}
+								title="Gerenciar submenus"
+							>
+								<Menu className="w-3 h-3" />
+								<span>Submenu</span>
 							</button>
 							<button
 								onClick={(e) => {
@@ -168,7 +365,7 @@ export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNod
 			{/* Renderizar filhos se expandido */}
 			{hasChildren && isExpanded && (
 				<div className="mt-2">
-					{etapa.subEtapas.map((subEtapa, idx) => (
+					{children.map((subEtapa, idx) => (
 						<EtapaTreeNode
 							key={subEtapa.id}
 							etapa={subEtapa}
@@ -180,6 +377,9 @@ export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNod
 							onEdit={onEdit}
 							onRemove={onRemove}
 							trilhaId={trilhaId}
+							onAddSubmenu={onAddSubmenu}
+							onEditSubmenu={onEditSubmenu}
+							onRemoveSubmenu={onRemoveSubmenu}
 						/>
 					))}
 				</div>

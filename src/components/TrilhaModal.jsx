@@ -1,9 +1,9 @@
 import React from "react";
-import { X, FileText, Plus } from "lucide-react";
+import { X, FileText, Plus, Package } from "lucide-react";
 import EtapaTreeNode from "./EtapaTreeNode";
 import { useTheme } from "../contexts/ThemeContext";
 
-export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClose, onAddEtapa, onEditEtapa, onRemoveEtapa }) {
+export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClose, onAddEtapa, onEditEtapa, onRemoveEtapa, onAddSubmenu, onEditSubmenu, onRemoveSubmenu }) {
 	const { theme, isDarkMode } = useTheme();
 
 	if (!trilha) return null;
@@ -46,6 +46,9 @@ export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClo
 								onEdit={onEditEtapa}
 								onRemove={onRemoveEtapa}
 								trilhaId={trilha.id}
+								onAddSubmenu={onAddSubmenu}
+								onEditSubmenu={onEditSubmenu}
+								onRemoveSubmenu={onRemoveSubmenu}
 							/>
 						))}
 						
@@ -58,6 +61,92 @@ export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClo
 							<span className="font-semibold">Adicionar Nova Etapa Principal</span>
 						</button>
 					</div>
+
+					{/* Resumo de Submenus */}
+					{(() => {
+						const contarSubmenus = (etapas) => {
+							let total = 0;
+							const processar = (items) => {
+								items?.forEach(item => {
+									total += item.submenus?.length || 0;
+									if (item.subEtapas?.length > 0) {
+										processar(item.subEtapas);
+									}
+									if (item.all_children?.length > 0) {
+										processar(item.all_children);
+									}
+								});
+							};
+							processar(etapas);
+							return total;
+						};
+						
+						const totalSubmenus = contarSubmenus(trilha.etapas);
+						
+						if (totalSubmenus > 0) {
+							return (
+								<div className={`mt-6 p-4 rounded-xl border ${isDarkMode ? 'bg-purple-900/20 border-purple-500/30' : 'bg-purple-50 border-purple-200'}`}>
+									<div className="flex items-center gap-2 mb-2">
+										<div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-purple-600/30' : 'bg-purple-200'}`}>
+											<FileText className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+										</div>
+										<div>
+											<p className={`text-sm font-bold ${isDarkMode ? 'text-purple-400' : 'text-purple-700'}`}>
+												{totalSubmenus} {totalSubmenus === 1 ? 'Submenu Cadastrado' : 'Submenus Cadastrados'}
+											</p>
+											<p className={`text-xs ${isDarkMode ? 'text-purple-300/70' : 'text-purple-600/70'}`}>
+												Expanda as etapas acima para visualizar os submenus
+											</p>
+										</div>
+									</div>
+								</div>
+							);
+						}
+						return null;
+					})()}
+
+					{/* Resumo de Produtos */}
+					{(() => {
+						const contarProdutos = (etapas) => {
+							let total = 0;
+							const processar = (items) => {
+								items?.forEach(item => {
+									total += item.produtos?.length || 0;
+									if (item.subEtapas?.length > 0) {
+										processar(item.subEtapas);
+									}
+									if (item.all_children?.length > 0) {
+										processar(item.all_children);
+									}
+								});
+							};
+							processar(etapas);
+							return total;
+						};
+						
+						const totalProdutos = contarProdutos(trilha.etapas);
+						
+						if (totalProdutos > 0) {
+							return (
+								<div className={`mt-4 p-4 rounded-xl border ${isDarkMode ? 'bg-green-900/20 border-green-500/30' : 'bg-green-50 border-green-200'}`}>
+									<div className="flex items-center gap-2 mb-2">
+										<div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-green-600/30' : 'bg-green-200'}`}>
+											<Package className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+										</div>
+										<div>
+											<p className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>
+												{totalProdutos} {totalProdutos === 1 ? 'Produto Cadastrado' : 'Produtos Cadastrados'}
+											</p>
+											<p className={`text-xs ${isDarkMode ? 'text-green-300/70' : 'text-green-600/70'}`}>
+												Expanda as etapas acima para visualizar os produtos
+											</p>
+										</div>
+									</div>
+								</div>
+							);
+						}
+						return null;
+					})()}
 
 					{/* Legenda */}
 					<div className={`mt-6 pt-6 border-t ${theme.border.input}`}>

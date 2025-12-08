@@ -2,15 +2,17 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import Home from './pages/Home';
 import Cadastro from './pages/Cadastro';
 import Trilha from './pages/Trilha';
+import Produtos from './pages/Produtos';
 
 function AppRouter() {
   return (
-    <Router basename="/playbook">
+    <Router >
       <Routes>
         <Route path="/home" element={<Home />} />
         <Route path="/about" element={<div>About Page</div>} />
         <Route path="/cadastro" element={<Cadastro />} />
         <Route path="/trilha" element={<Trilha />} />
+        <Route path="/produtos" element={<Produtos />} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </Router>
