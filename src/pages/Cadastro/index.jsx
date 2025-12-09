@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import MenuSuperior from "../MenuSuperior";
-import { Plus, Loader2, AlertCircle, FileText, Upload, X, Image as ImageIcon, Edit, Trash2, Maximize2, CheckSquare, Square, Package } from "lucide-react";
+import { Plus, Loader2, AlertCircle, FileText, Upload, X, Image as ImageIcon, Edit, Trash2, Maximize2, CheckSquare, Square, Package, Menu } from "lucide-react";
 import { useTrilhas } from "../../hooks/useTrilhas";
 import { useTheme } from "../../contexts/ThemeContext";
 import TrilhaForm from "../../components/TrilhaForm";
@@ -15,6 +15,7 @@ export default function Cadastro() {
 	const [expandedTrilha, setExpandedTrilha] = useState(null);
 	const [expandedNodes, setExpandedNodes] = useState({});
 	const [titulo, setTitulo] = useState("");
+	const [descricao, setDescricao] = useState("");
 	const [arquivos, setArquivos] = useState([]);
 	const [goToSelecionados, setGoToSelecionados] = useState([]);
 	const [showEtapaForm, setShowEtapaForm] = useState(false);
@@ -379,19 +380,29 @@ export default function Cadastro() {
 		const trilha = trilhas.find(t => t.id === trilhaId);
 		if (!trilha) return;
 
-		// Carregar dados da trilha no formulário
-		setTitulo(trilha.titulo || trilha.descricao);
+		// Fechar o formulário primeiro
+		setShowForm(false);
 		
-		// Carregar go_to se existir
-		const goToArray = trilha.go_to ? trilha.go_to.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
-		setGoToSelecionados(goToArray);
-		
-		// Não carregar arquivos existentes para edição, apenas novos
-		setArquivos([]);
-		
-		setIsEditingTrilha(true);
-		setTrilhaEditId(trilhaId);
-		setShowForm(true);
+		// Usar setTimeout para garantir que o formulário seja desmontado
+		setTimeout(() => {
+			// Definir modo de edição e ID
+			setIsEditingTrilha(true);
+			setTrilhaEditId(trilhaId);
+			
+			// Carregar dados da trilha no formulário
+			setTitulo(trilha.titulo || "");
+			setDescricao(trilha.descricao || "");
+			
+			// Carregar go_to se existir
+			const goToArray = trilha.go_to ? trilha.go_to.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
+			setGoToSelecionados(goToArray);
+			
+			// Não carregar arquivos existentes para edição, apenas novos
+			setArquivos([]);
+			
+			// Mostrar formulário novamente
+			setShowForm(true);
+		}, 10);
 	};
 
 	const salvarTrilha = async () => {
@@ -410,7 +421,7 @@ export default function Cadastro() {
 				
 				await atualizarTrilha(trilhaEditId, {
 					titulo: titulo,
-					descricao: titulo, // Usar o título como descrição também
+					descricao: descricao,
 					go_to: goToString
 				}, arquivosNovos);
 				
@@ -420,7 +431,7 @@ export default function Cadastro() {
 				// Criar apenas a trilha raiz (pai) com título e arquivos
 				const novaTrilha = {
 					titulo: titulo,
-					descricao: titulo, // Usar o título como descrição também
+					descricao: descricao,
 					go_to: goToString,
 					arquivos: arquivos
 				};
@@ -432,6 +443,7 @@ export default function Cadastro() {
 			
 			// Limpar formulário
 			setTitulo("");
+			setDescricao("");
 			setArquivos([]);
 			setGoToSelecionados([]);
 			setIsEditingTrilha(false);
@@ -522,31 +534,33 @@ export default function Cadastro() {
 						</button>
 					</div>
 
-					{/* Formulário de Cadastro */}
-					{showForm && (
-						<TrilhaForm
-							titulo={titulo}
-							setTitulo={setTitulo}
-							arquivos={arquivos}
-							setArquivos={setArquivos}
-							goToSelecionados={goToSelecionados}
-							setGoToSelecionados={setGoToSelecionados}
-							decisoesDisponiveis={decisoesDisponiveis}
-							loadingDecisoes={loadingDecisoes}
-							onSave={salvarTrilha}
-							onCancel={() => {
-								setShowForm(false);
-								setTitulo("");
-								setArquivos([]);
-								setGoToSelecionados([]);
-								setIsEditingTrilha(false);
-								setTrilhaEditId(null);
-							}}
-							isEditing={isEditingTrilha}
-						/>
-					)}
-
-					{/* Lista de Trilhas Cadastradas */}
+				{/* Formulário de Cadastro */}
+				{showForm && (
+					<TrilhaForm
+						key={trilhaEditId || 'new'} // Força re-montagem ao editar
+						titulo={titulo}
+						setTitulo={setTitulo}
+						descricao={descricao}
+						setDescricao={setDescricao}
+						arquivos={arquivos}
+						setArquivos={setArquivos}
+						goToSelecionados={goToSelecionados}
+						setGoToSelecionados={setGoToSelecionados}
+						decisoesDisponiveis={decisoesDisponiveis}
+						loadingDecisoes={loadingDecisoes}
+						onSave={salvarTrilha}
+						onCancel={() => {
+							setShowForm(false);
+							setTitulo("");
+							setDescricao("");
+							setArquivos([]);
+							setGoToSelecionados([]);
+							setIsEditingTrilha(false);
+							setTrilhaEditId(null);
+						}}
+						isEditing={isEditingTrilha}
+					/>
+				)}					{/* Lista de Trilhas Cadastradas */}
 					<div>
 						<div className="flex items-center justify-between mb-6">
 							<h2 className={`text-2xl font-bold ${theme.text.primary}`}>Trilhas Cadastradas</h2>
@@ -594,6 +608,9 @@ export default function Cadastro() {
 										onViewTree={setExpandedTrilha}
 										onEdit={handleEditTrilha}
 										onDelete={excluirTrilha}
+										onAddSubmenu={handleAddSubmenu}
+										onEditSubmenu={handleEditSubmenu}
+										onRemoveSubmenu={handleRemoveSubmenu}
 									/>
 								))}
 							</div>
@@ -654,8 +671,15 @@ export default function Cadastro() {
 													Ver Árvore
 												</button>
 												<button 
+													onClick={() => handleAddSubmenu(trilha.id)}
+													className={`p-2 ${isDarkMode ? 'bg-purple-600/20 border-purple-500/30 text-purple-400 hover:bg-purple-600/30' : 'bg-purple-100 border-purple-300 text-purple-700 hover:bg-purple-200'} border rounded-lg transition-all`}
+													title="Adicionar submenu"
+												>
+													<Menu className="w-4 h-4" />
+												</button>
+												<button 
 													onClick={() => handleEditTrilha(trilha.id)}
-													className={`p-2 ${isDarkMode ? 'bg-purple-600/20 border-purple-500/30 text-purple-400 hover:bg-purple-600/30' : 'bg-gray-200 border-gray-300 text-gray-700 hover:bg-gray-300'} border rounded-lg transition-all`}
+													className={`p-2 ${isDarkMode ? 'bg-slate-700/50 border-slate-600 hover:bg-slate-700' : 'bg-gray-200 border-gray-300 hover:bg-gray-300'} ${theme.text.secondary} border rounded-lg transition-all`}
 													title="Editar"
 												>
 													<Edit className="w-4 h-4" />

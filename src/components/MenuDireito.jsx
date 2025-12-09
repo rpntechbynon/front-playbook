@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, MapPin, ExternalLink, ChevronRight, Layers, Navigation, ArrowRight, Info, Package, CheckSquare } from "lucide-react";
+import { Link, MapPin, ExternalLink, ChevronRight, Layers, Navigation, ArrowRight, Info, Package, CheckSquare, Image, FileText } from "lucide-react";
 import TrilhaService from "../services/TrilhaService";
 import { useTheme } from "../contexts/ThemeContext";
 
@@ -9,6 +9,32 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
   const [allTrilhas, setAllTrilhas] = useState([]);
   const [selectedDestinationId, setSelectedDestinationId] = useState(null);
   const [tooltipProdutoId, setTooltipProdutoId] = useState(null);
+
+  // Função para renderizar texto com tópicos (separados por ;)
+  const renderTextWithTopics = (text) => {
+    if (!text) return null;
+    
+    // Se tem ponto e vírgula, divide em tópicos
+    if (text.includes(';')) {
+      const topics = text.split(';').map(t => t.trim()).filter(t => t.length > 0);
+      
+      if (topics.length > 1) {
+        return (
+          <div className="space-y-1">
+            {topics.map((topic, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <span className={`mt-0.5 w-1 h-1 rounded-full flex-shrink-0 ${isDarkMode ? 'bg-blue-400' : 'bg-gray-600'}`} />
+                <span className="flex-1 text-xs leading-tight">{topic}</span>
+              </div>
+            ))}
+          </div>
+        );
+      }
+    }
+    
+    // Se não tem ; ou tem apenas um item, retorna texto normal
+    return <span>{text}</span>;
+  };
 
   useEffect(() => {
     fetchAllTrilhas();
@@ -186,7 +212,9 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
               {selectedTrilha.titulo && (
                 <p className={`text-sm font-semibold mb-2 ${isDarkMode ? 'text-blue-300' : 'text-gray-800'}`}>{selectedTrilha.titulo}</p>
               )}
-              <p className={`text-xs leading-relaxed ${theme.text.secondary}`}>{selectedTrilha.descricao}</p>
+              <div className={`text-xs leading-relaxed ${theme.text.secondary}`}>
+                {renderTextWithTopics(selectedTrilha.descricao)}
+              </div>
             </div>
           </div>
         </div>
@@ -219,12 +247,12 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
                       <p className={`text-sm font-bold leading-tight mb-1 transition-colors duration-300 ${isDarkMode ? 'text-slate-100 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-900'}`}>
                         {submenu.titulo}
                       </p>
-                      <p className={`text-xs leading-relaxed transition-colors duration-300 ${isDarkMode ? 'text-slate-400 group-hover:text-slate-300' : 'text-gray-600 group-hover:text-gray-700'}`}>
-                        {submenu.descricao}
-                      </p>
+                      <div className={`text-xs leading-relaxed transition-colors duration-300 ${isDarkMode ? 'text-slate-400 group-hover:text-slate-300' : 'text-gray-600 group-hover:text-gray-700'}`}>
+                        {renderTextWithTopics(submenu.descricao)}
+                      </div>
                       
                       {/* Documentos do Submenu */}
-                      {submenu.documentos && submenu.documentos.length > 0 && (
+                      {/* {submenu.documentos && submenu.documentos.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-slate-600/30">
                           <p className={`text-xs font-semibold mb-2 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                             📎 {submenu.documentos.length} {submenu.documentos.length === 1 ? 'Documento' : 'Documentos'}
@@ -248,9 +276,9 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
                                 >
                                   <div className={`p-1.5 rounded ${isDarkMode ? 'bg-purple-500/20' : 'bg-purple-100'}`}>
                                     {isImage ? (
-                                      <img src={doc.url_presignada || doc.caminho} alt={doc.nome} className="w-4 h-4 object-cover rounded" />
+                                      <Image className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                                     ) : (
-                                      <ExternalLink className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                                      <FileText className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                                     )}
                                   </div>
                                   <span className={`text-xs truncate flex-1 text-left ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
@@ -276,7 +304,7 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
                             })}
                           </div>
                         </div>
-                      )}
+                      )} */}
                     </div>
                   </div>
 
@@ -385,7 +413,9 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
                       {produto.descricao && (
                         <div>
                           <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Descrição: </span>
-                          <span className={isDarkMode ? 'text-slate-400' : 'text-gray-600'}>{produto.descricao}</span>
+                          <div className={`inline ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+                            {renderTextWithTopics(produto.descricao)}
+                          </div>
                         </div>
                       )}
                       {produto.tipo && (
@@ -459,14 +489,14 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
                           <p className={`text-sm font-bold leading-tight mb-1 transition-colors duration-300 ${isDarkMode ? 'text-slate-100 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-900'}`}>
                             {destination.titulo}
                           </p>
-                          <p className={`text-xs leading-relaxed transition-colors duration-300 ${isDarkMode ? 'text-slate-400 group-hover:text-slate-300' : 'text-gray-600 group-hover:text-gray-700'}`}>
-                            {destination.descricao}
-                          </p>
+                          <div className={`text-xs leading-relaxed transition-colors duration-300 ${isDarkMode ? 'text-slate-400 group-hover:text-slate-300' : 'text-gray-600 group-hover:text-gray-700'}`}>
+                            {renderTextWithTopics(destination.descricao)}
+                          </div>
                         </>
                       ) : (
-                        <p className={`text-sm leading-relaxed transition-colors duration-300 ${isDarkMode ? 'text-slate-200 group-hover:text-white' : 'text-gray-700 group-hover:text-gray-900'}`}>
-                          {destination.descricao}
-                        </p>
+                        <div className={`text-sm leading-relaxed transition-colors duration-300 ${isDarkMode ? 'text-slate-200 group-hover:text-white' : 'text-gray-700 group-hover:text-gray-900'}`}>
+                          {renderTextWithTopics(destination.descricao)}
+                        </div>
                       )}
                     </div>
 
