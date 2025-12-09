@@ -11,6 +11,7 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredDecisoes, setFilteredDecisoes] = useState([]);
   const [selectedTrilhaId, setSelectedTrilhaId] = useState(null);
+  const [activePath, setActivePath] = useState([]); // IDs dos ancestrais do item selecionado
 
   useEffect(() => {
     fetchDecisoes();
@@ -118,9 +119,35 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
     return item.all_children && item.all_children.length > 0;
   };
 
+  // Função para encontrar o caminho (path) até um item específico
+  const findPathToItem = (items, targetId, currentPath = []) => {
+    for (const item of items) {
+      const newPath = [...currentPath, item.id];
+      
+      if (item.id === targetId) {
+        return newPath;
+      }
+      
+      if (item.all_children && item.all_children.length > 0) {
+        const foundPath = findPathToItem(item.all_children, targetId, newPath);
+        if (foundPath) {
+          return foundPath;
+        }
+      }
+    }
+    return null;
+  };
+
   const handleItemClick = (item, hasChildrenItems) => {
     // Sempre seleciona a trilha para mostrar seus anexos
     setSelectedTrilhaId(item.id);
+    
+    // Encontrar e definir o caminho ativo (todos os ancestrais)
+    const path = findPathToItem(decisoes, item.id);
+    if (path) {
+      setActivePath(path);
+    }
+    
     if (onSelectTrilha) {
       onSelectTrilha(item);
     }
@@ -140,6 +167,32 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
         <mark key={index} className="bg-yellow-400/40 text-yellow-100 px-1.5 py-0.5 rounded font-semibold">{part}</mark> : 
         part
     );
+  };
+
+  // Função para renderizar texto com tópicos (separados por ;)
+  const renderTextWithTopics = (text, term) => {
+    if (!text) return null;
+    
+    // Se tem ponto e vírgula, divide em tópicos
+    if (text.includes(';')) {
+      const topics = text.split(';').map(t => t.trim()).filter(t => t.length > 0);
+      
+      if (topics.length > 1) {
+        return (
+          <div className="space-y-1">
+            {topics.map((topic, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <span className={`mt-0.5 w-1 h-1 rounded-full flex-shrink-0 ${isDarkMode ? 'bg-blue-400' : 'bg-gray-600'}`} />
+                <span className="flex-1 text-xs leading-tight">{term ? highlightText(topic, term) : topic}</span>
+              </div>
+            ))}
+          </div>
+        );
+      }
+    }
+    
+    // Se não tem ; ou tem apenas um item, retorna texto normal
+    return <span>{term ? highlightText(text, term) : text}</span>;
   };
 
   const getItemColors = (level, isExpanded, hasChildrenItems) => {
@@ -262,13 +315,18 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
     const children = item.all_children || [];
     const hasChildrenItems = children.length > 0;
     const isSelected = selectedTrilhaId === item.id;
+    const isInActivePath = activePath.includes(item.id); // Verifica se está no caminho ativo
 
     return (
       <div key={item.id} className="relative" id={`trilha-item-${item.id}`}>
         {/* Linha conectora vertical para níveis > 0 */}
         {level > 0 && (
           <div 
-            className={`absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b to-transparent ${isDarkMode ? 'from-slate-600/40 via-slate-500/30' : 'from-gray-300/60 via-gray-200/40'}`}
+            className={`absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b to-transparent ${
+              isInActivePath 
+                ? (isDarkMode ? 'from-orange-400/80 via-orange-500/60' : 'from-orange-500/90 via-orange-400/70')
+                : (isDarkMode ? 'from-slate-600/40 via-slate-500/30' : 'from-gray-300/60 via-gray-200/40')
+            }`}
             style={{ marginLeft: `${(level - 1) * 24 + 12}px` }}
           />
         )}
@@ -276,7 +334,11 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
         {/* Linha conectora horizontal */}
         {level > 0 && (
           <div 
-            className={`absolute top-6 left-0 h-px bg-gradient-to-r to-transparent ${isDarkMode ? 'from-slate-600/40' : 'from-gray-300/60'}`}
+            className={`absolute top-6 left-0 h-px bg-gradient-to-r to-transparent ${
+              isInActivePath
+                ? (isDarkMode ? 'from-orange-400/80' : 'from-orange-500/90')
+                : (isDarkMode ? 'from-slate-600/40' : 'from-gray-300/60')
+            }`}
             style={{ 
               marginLeft: `${(level - 1) * 24 + 12}px`,
               width: '20px'
@@ -289,6 +351,8 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
           className={`relative bg-gradient-to-br ${
             isSelected ? 
             (isDarkMode ? 'from-green-600/50 to-emerald-600/40 border-green-400/80 shadow-xl shadow-green-500/40 ring-2 ring-green-400/50' : 'from-green-100 to-emerald-50 border-green-500 shadow-lg shadow-green-300/40 ring-2 ring-green-400') :
+            isInActivePath && !isSelected ?
+            (isDarkMode ? 'from-orange-600/40 to-amber-600/30 border-orange-400/70 shadow-xl shadow-orange-500/40 ring-2 ring-orange-400/50' : 'from-orange-100 to-amber-50 border-orange-400 shadow-lg shadow-orange-300/50 ring-2 ring-orange-400') :
             item.highlighted && searchTerm ? 
             (isDarkMode ? 'from-yellow-500/50 to-amber-500/40 border-yellow-400/80 shadow-xl shadow-yellow-500/40 ring-2 ring-yellow-400/30' : 'from-yellow-100 to-amber-50 border-yellow-500 shadow-lg shadow-yellow-300/40 ring-2 ring-yellow-400') : 
             getItemColors(level, isExpanded, hasChildrenItems)
@@ -318,11 +382,11 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
 
             {/* Texto */}
             <div className="flex-1 min-w-0">
-              <p className={`text-sm transition-all duration-300 leading-relaxed ${
+              <div className={`text-sm transition-all duration-300 leading-relaxed ${
                 hasChildrenItems ? 'font-bold' : 'font-medium'
               } ${isDarkMode ? 'text-slate-200 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-900'}`}>
-                {highlightText(item.titulo || item.descricao, searchTerm)}
-              </p>
+                {renderTextWithTopics(item.titulo || item.descricao, searchTerm)}
+              </div>
             </div>
 
             {/* Badge de contagem */}

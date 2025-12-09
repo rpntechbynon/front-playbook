@@ -5,6 +5,8 @@ import { useTheme } from "../contexts/ThemeContext";
 export default function TrilhaForm({ 
 	titulo, 
 	setTitulo,
+	descricao,
+	setDescricao,
 	arquivos,
 	setArquivos,
 	goToSelecionados,
@@ -54,7 +56,16 @@ export default function TrilhaForm({
 				/>
 			</div>
 
-			{/* Seletor de Go To (Decisões) */}
+		<div className="mb-6">
+			<label className={`block font-semibold mb-2 ${theme.text.secondary}`}>Descrição</label>
+			<textarea
+				value={descricao || ""}
+				onChange={(e) => setDescricao(e.target.value)}
+				placeholder="Descreva o objetivo e contexto desta trilha..."
+				rows={4}
+				className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all resize-none ${theme.bg.input} ${theme.border.input} ${theme.text.primary} ${theme.placeholder.input} ${isDarkMode ? 'focus:border-blue-500 focus:ring-blue-500/50' : 'focus:border-gray-600 focus:ring-gray-400'}`}
+			/>
+		</div>			{/* Seletor de Go To (Decisões) */}
 			<div className="mb-6">
 				<label className={`block font-semibold mb-2 flex items-center gap-2 ${theme.text.secondary}`}>
 					<CheckSquare className="w-4 h-4" />

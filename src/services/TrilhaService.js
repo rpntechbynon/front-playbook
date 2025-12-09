@@ -183,9 +183,9 @@ const TrilhaService = {
 	transformarParaFormato(apiData) {
 		return apiData.map(item => ({
 			id: item.id,
-			nome: item.descricao,
-			titulo: item.titulo,
-			descricao: item.descricao,
+			nome: item.titulo || item.descricao, // Prioriza título
+			titulo: item.titulo || "", // Título separado
+			descricao: item.descricao || "", // Descrição separada
 			id_pai: item.id_pai,
 			idPai: item.id_pai,
 			go_to: item.go_to,
