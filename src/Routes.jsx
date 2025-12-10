@@ -6,7 +6,7 @@ import Produtos from './pages/Produtos';
 
 function AppRouter() {
   return (
-    <Router basename='/playbook' >
+    <Router  >
       <Routes >
         <Route path="/home" element={<Home />} />
         <Route path="/about" element={<div>About Page</div>} />

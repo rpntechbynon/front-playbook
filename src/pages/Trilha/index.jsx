@@ -4,6 +4,7 @@ import MenuLateral from "../../components/Menulateral";
 import MenuDireito from "../../components/MenuDireito";
 import { FileText, Image as ImageIcon, Download } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
+import API_BASE_URL from "../../config/api";
 
 export default function Trilha() {
   const { theme, isDarkMode } = useTheme();
@@ -35,8 +36,8 @@ export default function Trilha() {
 
   const handleSelectSubmenuDocument = (document) => {
     setSelectedSubmenuDocument(document);
-    // Encontrar o índice do documento nos anexos visualizáveis
-    const allDocs = getAllDocuments();
+    // Encontrar o índice do documento nos anexos visualizáveis (incluindo submenus para navegação)
+    const allDocs = getAllDocumentsIncludingSubmenus();
     const viewableDocs = allDocs.filter(doc => 
       doc.tipo?.startsWith('image/') || 
       doc.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ||
@@ -49,8 +50,22 @@ export default function Trilha() {
     }
   };
 
-  // Coletar todos os documentos (da etapa e dos submenus)
+  // Coletar apenas documentos da etapa principal (sem submenus)
   const getAllDocuments = () => {
+    if (!selectedTrilha) return [];
+    
+    let allDocs = [];
+    
+    // Adicionar apenas documentos da etapa principal
+    if (selectedTrilha.documentos && selectedTrilha.documentos.length > 0) {
+      allDocs = [...selectedTrilha.documentos];
+    }
+    
+    return allDocs;
+  };
+  
+  // Função auxiliar para coletar documentos incluindo submenus (usado para navegação do visualizador)
+  const getAllDocumentsIncludingSubmenus = () => {
     if (!selectedTrilha) return [];
     
     let allDocs = [];
@@ -73,6 +88,7 @@ export default function Trilha() {
   };
 
   // Verificar se tem documentos e separar por tipo
+  // Para a lista: apenas documentos da etapa principal
   const allDocuments = getAllDocuments();
   const hasAttachments = allDocuments.length > 0;
   const imageAttachments = hasAttachments 
@@ -92,14 +108,48 @@ export default function Trilha() {
       )
     : [];
   
-  // Todos os anexos visualizáveis (imagens + PDFs)
-  const viewableAttachments = [...imageAttachments, ...pdfAttachments];
+  // Para o visualizador: incluir documentos dos submenus para permitir visualização
+  const allDocumentsForViewer = getAllDocumentsIncludingSubmenus();
+  const viewableAttachments = allDocumentsForViewer.filter(doc => 
+    doc.tipo?.startsWith('image/') || 
+    doc.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ||
+    doc.tipo === 'application/pdf' || 
+    doc.nome?.match(/\.pdf$/i)
+  );
   const currentAttachment = viewableAttachments[selectedAttachmentIndex];
+  
+  // Verificar se o documento atual pertence a um submenu
+  const isCurrentAttachmentFromSubmenu = () => {
+    if (!selectedTrilha || !currentAttachment) return false;
+    
+    // Verificar se o documento está em algum submenu
+    if (selectedTrilha.submenus && selectedTrilha.submenus.length > 0) {
+      return selectedTrilha.submenus.some(submenu => 
+        submenu.documentos?.some(doc => doc.id === currentAttachment.id)
+      );
+    }
+    return false;
+  };
   
   // Obter URL do anexo (usar url_presignada se disponível)
   const getAttachmentUrl = (documento) => {
-    // Usar url_presignada (URL da AWS S3) ou fallback para caminho ou url
-    return documento.url_presignada || documento.url || documento.caminho;
+    // Prioridade 1: url_presignada (AWS S3 com assinatura)
+    if (documento.url_presignada) {
+      return documento.url_presignada;
+    }
+    
+    // Prioridade 2: campo url (pode ser S3 ou outra URL completa)
+    if (documento.url && (documento.url.startsWith('http://') || documento.url.startsWith('https://'))) {
+      return documento.url;
+    }
+    
+    // Prioridade 3: caminho relativo - construir URL local
+    if (documento.caminho) {
+      const baseUrl = API_BASE_URL.replace('/api', '');
+      return `${baseUrl}/storage/${documento.caminho}`;
+    }
+    
+    return '';
   };
   
   return (
@@ -131,25 +181,38 @@ export default function Trilha() {
               <div className="flex-1 overflow-hidden flex flex-col">
                 {viewableAttachments.length > 0 ? (
                   <>
-                    {/* Visualizador */}
+                    {/* Visualizador - Só mostrar se não for documento de submenu OU se foi clicado explicitamente */}
                     <div className={`flex-1 flex items-center justify-center overflow-hidden ${isDarkMode ? 'bg-slate-900/50' : 'bg-gray-100'}`}>
-                      {currentAttachment?.tipo?.startsWith('image/') || currentAttachment?.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                        <img 
-                          src={getAttachmentUrl(currentAttachment)} 
-                          alt={currentAttachment.nome}
-                          className="w-full h-full object-contain"
-                        />
-                      ) : currentAttachment?.tipo === 'application/pdf' || currentAttachment?.nome?.match(/\.pdf$/i) ? (
-                        <iframe
-                          src={getAttachmentUrl(currentAttachment)}
-                          className="w-full h-full border-0"
-                          title={currentAttachment.nome}
-                        />
-                      ) : null}
+                      {(selectedSubmenuDocument || !isCurrentAttachmentFromSubmenu()) && currentAttachment ? (
+                        currentAttachment?.tipo?.startsWith('image/') || currentAttachment?.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                          <img 
+                            src={getAttachmentUrl(currentAttachment)} 
+                            alt={currentAttachment.nome}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              console.error('Erro ao carregar imagem:', e.target.src);
+                              console.error('Documento:', currentAttachment);
+                            }}
+                            onLoad={() => {
+                              console.log('Imagem carregada com sucesso:', getAttachmentUrl(currentAttachment));
+                            }}
+                          />
+                        ) : currentAttachment?.tipo === 'application/pdf' || currentAttachment?.nome?.match(/\.pdf$/i) ? (
+                          <iframe
+                            src={getAttachmentUrl(currentAttachment)}
+                            className="w-full h-full border-0"
+                            title={currentAttachment.nome}
+                          />
+                        ) : null
+                      ) : (
+                        <div className={`flex flex-col items-center justify-center gap-4 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                          <p className="text-lg">Clique em um card de submenu para visualizar</p>
+                        </div>
+                      )}
                     </div>
                     
-                    {/* Galeria de Miniaturas */}
-                    {viewableAttachments.length > 1 && (
+                    {/* Galeria de Miniaturas - Ocultar quando exibindo documento de submenu */}
+                    {viewableAttachments.length > 1 && !selectedSubmenuDocument && !isCurrentAttachmentFromSubmenu() && (
                       <div className={`border-t p-4 ${isDarkMode ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-gray-200'}`}>
                         <div className="flex gap-3 overflow-x-auto pb-2">
                           {viewableAttachments.map((attachment, index) => {

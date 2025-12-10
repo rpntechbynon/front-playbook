@@ -228,10 +228,24 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
             {selectedTrilha.submenus.map((submenu, index) => {
               const colorClasses = getColorClasses(index);
               
+              // Verificar se o submenu tem imagens
+              const imagensSubmenu = submenu.documentos?.filter(doc => 
+                doc.tipo?.startsWith('image/') || doc.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+              ) || [];
+              const hasImages = imagensSubmenu.length > 0;
+              
+              // Função para clicar no card e exibir a primeira imagem
+              const handleSubmenuClick = () => {
+                if (hasImages && onSelectSubmenuDocument) {
+                  onSelectSubmenuDocument(imagensSubmenu[0]);
+                }
+              };
+              
               return (
                 <div
                   key={submenu.id}
-                  className={`w-full bg-gradient-to-br ${colorClasses.bg} border ${colorClasses.border} rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 backdrop-blur-sm group`}
+                  onClick={handleSubmenuClick}
+                  className={`w-full bg-gradient-to-br ${colorClasses.bg} border ${colorClasses.border} rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 backdrop-blur-sm group ${hasImages ? 'cursor-pointer' : ''}`}
                 >
                   <div className="flex items-start gap-3">
                     {/* Ícone */}
@@ -243,6 +257,12 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className={`text-xs font-black ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Ordem: {submenu.ordem}</span>
+                        {hasImages && (
+                          <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isDarkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
+                            <Image className="w-3 h-3" />
+                            {imagensSubmenu.length}
+                          </span>
+                        )}
                       </div>
                       <p className={`text-sm font-bold leading-tight mb-1 transition-colors duration-300 ${isDarkMode ? 'text-slate-100 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-900'}`}>
                         {submenu.titulo}
