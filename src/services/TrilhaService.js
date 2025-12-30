@@ -45,6 +45,12 @@ const TrilhaService = {
 				formData.append('titulo', dados.titulo);
 			}
 			
+			// Adicionar ordem se fornecido (aceita 0)
+			if (dados.ordem !== null && dados.ordem !== undefined) {
+				formData.append('ordem', dados.ordem);
+				console.log('Enviando ordem:', dados.ordem);
+			}
+			
 			// Adicionar id_pai se fornecido
 			if (dados.id_pai) {
 				formData.append('id_pai', dados.id_pai);
@@ -129,6 +135,12 @@ const TrilhaService = {
 			// Adicionar titulo se fornecido
 			if (dados.titulo) {
 				formData.append('titulo', dados.titulo);
+			}
+			
+			// Adicionar ordem se fornecido (aceita 0)
+			if (dados.ordem !== null && dados.ordem !== undefined) {
+				formData.append('ordem', dados.ordem);
+				console.log('Enviando ordem:', dados.ordem);
 			}
 			
 			// Adicionar go_to (IDs separados por vírgula)
@@ -216,6 +228,7 @@ const TrilhaService = {
 			nome: item.titulo || item.descricao, // Prioriza título
 			titulo: item.titulo || "", // Título separado
 			descricao: item.descricao || "", // Descrição separada
+			ordem: item.ordem !== null && item.ordem !== undefined ? item.ordem : null, // Ordem da decisão
 			id_pai: item.id_pai,
 			idPai: item.id_pai,
 			go_to: item.go_to,
@@ -278,6 +291,7 @@ const TrilhaService = {
 			id: child.id,
 			titulo: child.titulo || child.descricao,
 			descricao: child.descricao,
+			ordem: child.ordem !== null && child.ordem !== undefined ? child.ordem : null, // Ordem da etapa
 			id_pai: child.id_pai,
 			idPai: child.id_pai,
 			go_to: child.go_to,
@@ -343,6 +357,7 @@ const TrilhaService = {
 		const dados = {
 			descricao: appData.nome || appData.descricao || appData.titulo,
 			titulo: appData.titulo || null,
+			ordem: appData.ordem !== null && appData.ordem !== undefined ? appData.ordem : null,
 			id_pai: appData.id_pai || null,
 			go_to: appData.go_to || appData.goTo || null,
 			arquivos: appData.arquivos || [],
@@ -373,6 +388,11 @@ const TrilhaService = {
 			arquivos: arquivosNovos,
 			produtos: etapa.produtos || []
 		};
+
+		// Adicionar ordem se fornecido (aceita 0)
+		if (etapa.ordem !== null && etapa.ordem !== undefined) {
+			dados.ordem = etapa.ordem;
+		}
 
 		return dados;
 	},

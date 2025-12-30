@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Upload, X, Image, FileText, CheckSquare, Square, AlertCircle } from "lucide-react";
+import { Plus, Upload, X, Image, FileText, CheckSquare, Square, AlertCircle, Hash } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
 export default function TrilhaForm({ 
@@ -7,6 +7,8 @@ export default function TrilhaForm({
 	setTitulo,
 	descricao,
 	setDescricao,
+	ordem,
+	setOrdem,
 	arquivos,
 	setArquivos,
 	goToSelecionados,
@@ -54,6 +56,28 @@ export default function TrilhaForm({
 					placeholder="Ex: Oportunidades, Suporte ao Cliente, etc."
 					className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${theme.bg.input} ${theme.border.input} ${theme.text.primary} ${theme.placeholder.input} ${isDarkMode ? 'focus:border-blue-500 focus:ring-blue-500/50' : 'focus:border-gray-600 focus:ring-gray-400'}`}
 					autoFocus
+				/>
+			</div>
+
+			<div className="mb-6">
+				<label className={`block font-semibold mb-2 ${theme.text.secondary} flex items-center gap-2`}>
+					<Hash className="w-4 h-4" />
+					Ordem da Decisão
+				</label>
+				<p className={`text-xs mb-2 ${theme.text.tertiary}`}>
+					Defina a ordem de exibição desta decisão (ex: 1, 2, 3...)
+				</p>
+				<input
+					type="number"
+					min="1"
+					value={ordem || ""}
+					onChange={(e) => {
+						const valor = e.target.value ? parseInt(e.target.value) : null;
+						console.log('Campo ordem alterado:', e.target.value, '-> parseInt:', valor);
+						setOrdem(valor);
+					}}
+					placeholder="Ex: 1"
+					className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${theme.bg.input} ${theme.border.input} ${theme.text.primary} ${theme.placeholder.input} ${isDarkMode ? 'focus:border-blue-500 focus:ring-blue-500/50' : 'focus:border-gray-600 focus:ring-gray-400'}`}
 				/>
 			</div>
 

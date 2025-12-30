@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import MenuSuperior from "../MenuSuperior";
-import { Plus, Loader2, AlertCircle, FileText, Upload, X, Image as ImageIcon, Edit, Trash2, Maximize2, CheckSquare, Square, Package, Menu } from "lucide-react";
+import { Plus, Loader2, AlertCircle, FileText, Upload, X, Image as ImageIcon, Edit, Trash2, Maximize2, CheckSquare, Square, Package, Menu, ArrowUp, ArrowDown, GripVertical, Hash } from "lucide-react";
 import { useTrilhas } from "../../hooks/useTrilhas";
 import { useTheme } from "../../contexts/ThemeContext";
 import TrilhaForm from "../../components/TrilhaForm";
@@ -16,12 +16,13 @@ export default function Cadastro() {
 	const [expandedNodes, setExpandedNodes] = useState({});
 	const [titulo, setTitulo] = useState("");
 	const [descricao, setDescricao] = useState("");
+	const [ordem, setOrdem] = useState(null);
 	const [arquivos, setArquivos] = useState([]);
 	const [goToSelecionados, setGoToSelecionados] = useState([]);
 	const [showEtapaForm, setShowEtapaForm] = useState(false);
 	const [isEditingTrilha, setIsEditingTrilha] = useState(false);
 	const [trilhaEditId, setTrilhaEditId] = useState(null);
-	const [novaEtapa, setNovaEtapa] = useState({ trilhaId: null, parentId: null, titulo: "", descricao: "", arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null });
+	const [novaEtapa, setNovaEtapa] = useState({ trilhaId: null, parentId: null, titulo: "", descricao: "", ordem: null, arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null });
 	const [salvandoEtapa, setSalvandoEtapa] = useState(false);
 	const [mensagemSucesso, setMensagemSucesso] = useState("");
 	const [viewMode, setViewMode] = useState('grid'); // 'grid' ou 'lista'
@@ -49,6 +50,7 @@ export default function Cadastro() {
 				const response = await fetch(`${API_BASE_URL}/decisoes/all`);
 				if (response.ok) {
 					const data = await response.json();
+					console.log('Decisões carregadas:', data.length, 'decisões');
 					setDecisoesDisponiveis(data);
 				}
 			} catch (error) {
@@ -87,7 +89,41 @@ export default function Cadastro() {
 	};
 
 	const handleAddEtapa = (trilhaId, parentId) => {
-		setNovaEtapa({ trilhaId, parentId, titulo: "", descricao: "", arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null });
+		// Calcular próxima ordem com base nas etapas existentes
+		const trilha = trilhas.find(t => t.id === trilhaId);
+		let proximaOrdem = 1;
+		
+		if (trilha) {
+			if (parentId === null) {
+				// Etapa principal - buscar maior ordem nas etapas principais (etapas com id_pai = trilhaId)
+				const etapasPrincipais = trilha.etapas?.filter(e => e.id_pai === trilhaId) || [];
+				const ordens = etapasPrincipais.map(e => e.ordem || 0).filter(o => o > 0);
+				if (ordens.length > 0) {
+					proximaOrdem = Math.max(...ordens) + 1;
+				}
+			} else {
+				// Sub-etapa - buscar maior ordem nas sub-etapas do mesmo pai
+				const encontrarEtapa = (etapas, id) => {
+					for (const etapa of etapas) {
+						if (etapa.id === id) return etapa;
+						if (etapa.etapas) {
+							const found = encontrarEtapa(etapa.etapas, id);
+							if (found) return found;
+						}
+					}
+					return null;
+				};
+				const etapaPai = encontrarEtapa(trilha.etapas || [], parentId);
+				if (etapaPai && etapaPai.etapas) {
+					const ordens = etapaPai.etapas.map(e => e.ordem || 0).filter(o => o > 0);
+					if (ordens.length > 0) {
+						proximaOrdem = Math.max(...ordens) + 1;
+					}
+				}
+			}
+		}
+		
+		setNovaEtapa({ trilhaId, parentId, titulo: "", descricao: "", ordem: proximaOrdem, arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null });
 		setShowEtapaForm(true);
 	};
 
@@ -106,7 +142,8 @@ export default function Cadastro() {
 			trilhaId, 
 			parentId: etapa.parentId || null, 
 			titulo: etapa.titulo, 
-			descricao: etapa.descricao, 
+			descricao: etapa.descricao,
+			ordem: etapa.ordem !== null && etapa.ordem !== undefined ? etapa.ordem : null,
 			arquivos: etapa.anexos || [],
 			goTo: goToArray,
 			produtos: produtosArray,
@@ -135,64 +172,60 @@ export default function Cadastro() {
 				const arquivosNovos = novaEtapa.arquivos.filter(a => a instanceof File);
 				console.log('Arquivos novos para upload:', arquivosNovos.length);
 				
-				// Preparar dados para atualização
 				const dadosAtualizacao = {
 					descricao: novaEtapa.descricao,
 					titulo: novaEtapa.titulo,
+					ordem: novaEtapa.ordem,
 					produtos: novaEtapa.produtos || []
 				};
 				
-				// Apenas adicionar go_to se não for sub-etapa (parentId null significa etapa principal)
 				if (!novaEtapa.parentId) {
 					const goToString = novaEtapa.goTo && novaEtapa.goTo.length > 0 ? novaEtapa.goTo.join(',') : '';
 					dadosAtualizacao.go_to = goToString;
 				}
 				
-				// Usar o ID da etapa que está sendo editada (novaEtapa.etapaId), não o trilhaId
 				await atualizarTrilha(novaEtapa.etapaId, dadosAtualizacao, arquivosNovos);
 				
 				setMensagemSucesso("Etapa atualizada com sucesso!");
 				setTimeout(() => setMensagemSucesso(""), 3000);
 				
 				setShowEtapaForm(false);
-				setNovaEtapa({ trilhaId: null, parentId: null, titulo: "", descricao: "", arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null });
+				setNovaEtapa({ trilhaId: null, parentId: null, titulo: "", descricao: "", ordem: null, arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null });
 				return;
 			}
 
 			// Adicionar nova etapa - criar uma nova decisão com id_pai
 			const arquivosNovos = novaEtapa.arquivos.filter(a => a instanceof File);
 			console.log('Criando nova etapa com arquivos:', arquivosNovos.length);
-			
-			// Se parentId é null, o id_pai é o da trilha principal, senão é o parentId
+
 			const idPai = novaEtapa.parentId === null ? trilha.id : novaEtapa.parentId;
-			
-			// Preparar dados da nova etapa
+
 			const novoDado = {
 				descricao: novaEtapa.descricao,
 				titulo: novaEtapa.titulo,
+				ordem: novaEtapa.ordem,
 				id_pai: idPai,
 				arquivos: arquivosNovos,
 				produtos: novaEtapa.produtos || []
 			};
-			
-			// Apenas adicionar go_to se for etapa principal (parentId === null)
+
 			if (novaEtapa.parentId === null) {
 				const goToString = novaEtapa.goTo && novaEtapa.goTo.length > 0 ? novaEtapa.goTo.join(',') : '';
 				novoDado.go_to = goToString;
 			}
-			
-			// Criar uma nova decisão (etapa) com id_pai
-			await adicionarTrilha(novoDado);			setMensagemSucesso("Etapa adicionada com sucesso!");
+
+			await adicionarTrilha(novoDado);
+
+			setMensagemSucesso("Etapa adicionada com sucesso!");
 			setTimeout(() => setMensagemSucesso(""), 3000);
 			
 			setShowEtapaForm(false);
-			setNovaEtapa({ trilhaId: null, parentId: null, titulo: "", descricao: "", arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null });
+			setNovaEtapa({ trilhaId: null, parentId: null, titulo: "", descricao: "", ordem: null, arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null });
 			
-			// Expandir o nó pai automaticamente
 			if (novaEtapa.parentId) {
 				setExpandedNodes(prev => ({ ...prev, [novaEtapa.parentId]: true }));
 			}
-			setErrosArquivosEtapa([]); // Limpar erros ao salvar com sucesso
+			setErrosArquivosEtapa([]);
 		} catch (error) {
 			console.error('Erro ao salvar etapa:', error);
 			// Verificar se há erros de arquivo
@@ -400,6 +433,7 @@ export default function Cadastro() {
 			// Carregar dados da trilha no formulário
 			setTitulo(trilha.titulo || "");
 			setDescricao(trilha.descricao || "");
+			setOrdem(trilha.ordem || null);
 			
 			// Carregar go_to se existir
 			const goToArray = trilha.go_to ? trilha.go_to.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
@@ -419,6 +453,8 @@ export default function Cadastro() {
 			return;
 		}
 
+		console.log('Salvando trilha com ordem:', ordem, typeof ordem);
+
 		try {
 			// Converter array de IDs para string separada por vírgula
 			const goToString = goToSelecionados.length > 0 ? goToSelecionados.join(',') : '';
@@ -427,11 +463,16 @@ export default function Cadastro() {
 				// Editar trilha existente
 				const arquivosNovos = arquivos.filter(a => a instanceof File);
 				
-				await atualizarTrilha(trilhaEditId, {
+				const dadosAtualizacao = {
 					titulo: titulo,
 					descricao: descricao,
-					go_to: goToString
-				}, arquivosNovos);
+					go_to: goToString,
+					ordem: ordem
+				};
+				
+				console.log('Dados para atualização:', dadosAtualizacao);
+				
+				await atualizarTrilha(trilhaEditId, dadosAtualizacao, arquivosNovos);
 				
 				setMensagemSucesso("Trilha atualizada com sucesso!");
 				setTimeout(() => setMensagemSucesso(""), 3000);
@@ -441,8 +482,11 @@ export default function Cadastro() {
 					titulo: titulo,
 					descricao: descricao,
 					go_to: goToString,
+					ordem: ordem,
 					arquivos: arquivos
 				};
+				
+				console.log('Dados para criação:', novaTrilha);
 
 				await adicionarTrilha(novaTrilha);
 				setMensagemSucesso("Trilha criada! Agora adicione etapas clicando em 'Ver Árvore'.");
@@ -452,6 +496,7 @@ export default function Cadastro() {
 			// Limpar formulário
 			setTitulo("");
 			setDescricao("");
+			setOrdem(null);
 			setArquivos([]);
 			setGoToSelecionados([]);
 			setIsEditingTrilha(false);
@@ -541,23 +586,47 @@ export default function Cadastro() {
 							<h1 className={`text-3xl sm:text-4xl font-black mb-2 ${theme.text.primary}`}>Cadastro de Trilhas</h1>
 							<p className={theme.text.tertiary}>Gerencie suas trilhas de vendas e etapas</p>
 						</div>
-						<button
-							onClick={() => setShowForm(!showForm)}
-							className={`flex items-center gap-2 px-6 py-3 ${isDarkMode ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-blue-500/50' : 'bg-gray-800 hover:bg-gray-900'} text-white font-semibold rounded-xl shadow-md transition-all duration-300 hover:scale-105`}
-						>
-							<Plus className="w-5 h-5" />
-							Nova Trilha
-						</button>
-					</div>
+					<button
+						onClick={() => {
+							if (!showForm) {
+								// Abrir formulário de nova trilha
+								// Calcular próxima ordem com base nas trilhas principais (sem id_pai)
+								const trilhasPrincipais = trilhas.filter(t => !t.id_pai);
+								const ordens = trilhasPrincipais.map(t => t.ordem || 0).filter(o => o > 0);
+								const proximaOrdem = ordens.length > 0 ? Math.max(...ordens) + 1 : 1;
+								
+								// Resetar todos os campos para nova trilha
+								setTitulo("");
+								setDescricao("");
+								setOrdem(proximaOrdem);
+								setArquivos([]);
+								setGoToSelecionados([]);
+								setIsEditingTrilha(false);
+								setTrilhaEditId(null);
+								setErrosArquivos([]);
+								
+								setShowForm(true);
+							} else {
+								// Fechar formulário
+								setShowForm(false);
+							}
+						}}
+						className={`flex items-center gap-2 px-6 py-3 ${isDarkMode ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-blue-500/50' : 'bg-gray-800 hover:bg-gray-900'} text-white font-semibold rounded-xl shadow-md transition-all duration-300 hover:scale-105`}
+					>
+						<Plus className="w-5 h-5" />
+						{showForm ? "Cancelar" : "Nova Trilha"}
+					</button>
+				</div>
 
-				{/* Formulário de Cadastro */}
+				{/* Formulário de Nova Trilha */}
 				{showForm && (
 					<TrilhaForm
-						key={trilhaEditId || 'new'} // Força re-montagem ao editar
 						titulo={titulo}
 						setTitulo={setTitulo}
 						descricao={descricao}
 						setDescricao={setDescricao}
+						ordem={ordem}
+						setOrdem={setOrdem}
 						arquivos={arquivos}
 						setArquivos={setArquivos}
 						goToSelecionados={goToSelecionados}
@@ -570,6 +639,7 @@ export default function Cadastro() {
 							setShowForm(false);
 							setTitulo("");
 							setDescricao("");
+							setOrdem(null);
 							setArquivos([]);
 							setGoToSelecionados([]);
 							setIsEditingTrilha(false);
@@ -763,6 +833,25 @@ export default function Cadastro() {
 
 									<div>
 										<label className={`block font-semibold mb-2 text-sm ${theme.text.secondary} flex items-center gap-2`}>
+											<Hash className="w-4 h-4" />
+											Ordem
+										</label>
+										<p className={`text-xs mb-2 ${theme.text.tertiary}`}>Defina a ordem de exibição desta etapa (ex: 1, 2, 3...)</p>
+										<input
+											type="number"
+											min="1"
+											value={novaEtapa.ordem || ""}
+											onChange={(e) => {
+												const valor = e.target.value ? parseInt(e.target.value) : null;
+												setNovaEtapa({ ...novaEtapa, ordem: valor });
+											}}
+											placeholder="Ex: 1"
+											className={`w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 ${theme.bg.input} ${theme.border.input} ${theme.text.primary} ${theme.placeholder.input} ${isDarkMode ? 'focus:border-blue-500 focus:ring-blue-500/50' : 'focus:border-gray-600 focus:ring-gray-400'} transition-all`}
+										/>
+									</div>
+
+									<div>
+										<label className={`block font-semibold mb-2 text-sm ${theme.text.secondary} flex items-center gap-2`}>
 											<Package className="w-4 h-4" />
 											Produtos/Serviços
 										</label>
@@ -843,74 +932,193 @@ export default function Cadastro() {
 												Go To - Próximas Decisões
 											</label>
 											<p className={`text-xs mb-2 ${theme.text.tertiary}`}>
-												Selecione as decisões para onde esta etapa pode direcionar
+												Selecione e organize as decisões em ordem
 											</p>
 											
+											{/* Decisões Selecionadas com Ordem */}
+											{(novaEtapa.goTo || []).length > 0 && (
+												<div className="mb-3 space-y-2">
+													<div className="flex items-center justify-between mb-2">
+														<p className={`text-xs font-semibold ${theme.text.primary}`}>
+															Decisões Selecionadas ({(novaEtapa.goTo || []).length})
+														</p>
+													</div>
+													<div className="space-y-1">
+														{(novaEtapa.goTo || []).map((decisaoId, index) => {
+															const decisao = decisoesDisponiveis.find(d => d.id === decisaoId);
+															if (!decisao) return null;
+															
+															return (
+																<div
+																	key={decisaoId}
+																	className={`flex items-center gap-2 p-2 border rounded-lg ${
+																		isDarkMode 
+																			? 'bg-blue-900/20 border-blue-600/50 hover:bg-blue-900/30' 
+																			: 'bg-blue-50 border-blue-300 hover:bg-blue-100'
+																	} transition-all group`}
+																>
+																	{/* Handle para arrastar (visual) */}
+																	<GripVertical className={`w-4 h-4 ${theme.text.tertiary} flex-shrink-0 cursor-move`} />
+																	
+																	{/* Número da ordem */}
+																	<div className={`flex items-center justify-center w-6 h-6 rounded-md ${
+																		isDarkMode ? 'bg-blue-600/30 text-blue-300' : 'bg-blue-200 text-blue-700'
+																	} font-bold text-xs flex-shrink-0`}>
+																		{index + 1}
+																	</div>
+																	
+																	{/* Informação da decisão */}
+																	<div className="flex-1 min-w-0">
+																		<p className={`font-medium text-xs ${theme.text.primary} truncate`}>
+																			{decisao.titulo}
+																		</p>
+																	</div>
+																	
+																	{/* Botões de ação */}
+																	<div className="flex items-center gap-1 flex-shrink-0">
+																		{/* Mover para cima */}
+																		<button
+																			onClick={() => {
+																				if (index === 0) return;
+																				const newGoTo = [...novaEtapa.goTo];
+																				[newGoTo[index - 1], newGoTo[index]] = [newGoTo[index], newGoTo[index - 1]];
+																				setNovaEtapa({ ...novaEtapa, goTo: newGoTo });
+																			}}
+																			disabled={index === 0 || salvandoEtapa}
+																			className={`p-1 rounded transition-all ${
+																				index === 0 
+																					? 'opacity-30 cursor-not-allowed' 
+																					: isDarkMode 
+																						? 'hover:bg-blue-600/30 text-blue-400' 
+																						: 'hover:bg-blue-200 text-blue-700'
+																			}`}
+																			title="Mover para cima"
+																		>
+																			<ArrowUp className="w-3 h-3" />
+																		</button>
+																		
+																		{/* Mover para baixo */}
+																		<button
+																			onClick={() => {
+																				if (index === novaEtapa.goTo.length - 1) return;
+																				const newGoTo = [...novaEtapa.goTo];
+																				[newGoTo[index], newGoTo[index + 1]] = [newGoTo[index + 1], newGoTo[index]];
+																				setNovaEtapa({ ...novaEtapa, goTo: newGoTo });
+																			}}
+																			disabled={index === novaEtapa.goTo.length - 1 || salvandoEtapa}
+																			className={`p-1 rounded transition-all ${
+																				index === novaEtapa.goTo.length - 1 
+																					? 'opacity-30 cursor-not-allowed' 
+																					: isDarkMode 
+																						? 'hover:bg-blue-600/30 text-blue-400' 
+																						: 'hover:bg-blue-200 text-blue-700'
+																			}`}
+																			title="Mover para baixo"
+																		>
+																			<ArrowDown className="w-3 h-3" />
+																		</button>
+																		
+																		{/* Campo de ordem manual */}
+																		<input
+																			type="number"
+																			min="1"
+																			max={novaEtapa.goTo.length}
+																			value={index + 1}
+																			onChange={(e) => {
+																				const newPosition = parseInt(e.target.value) - 1;
+																				if (newPosition >= 0 && newPosition < novaEtapa.goTo.length && newPosition !== index) {
+																					const newGoTo = [...novaEtapa.goTo];
+																					const [removed] = newGoTo.splice(index, 1);
+																					newGoTo.splice(newPosition, 0, removed);
+																					setNovaEtapa({ ...novaEtapa, goTo: newGoTo });
+																				}
+																			}}
+																			disabled={salvandoEtapa}
+																			className={`w-10 px-1 py-0.5 text-center text-xs border rounded ${
+																				isDarkMode 
+																					? 'bg-slate-700 border-slate-600 text-slate-200' 
+																					: 'bg-white border-gray-300 text-gray-800'
+																			} focus:outline-none focus:ring-1 focus:ring-blue-500`}
+																			title="Alterar ordem"
+																		/>
+																		
+																		{/* Remover */}
+																		<button
+																			onClick={() => {
+																				setNovaEtapa({ 
+																					...novaEtapa, 
+																					goTo: novaEtapa.goTo.filter(id => id !== decisaoId) 
+																				});
+																			}}
+																			disabled={salvandoEtapa}
+																			className={`p-1 rounded transition-all ${
+																				isDarkMode 
+																					? 'hover:bg-red-600/30 text-red-400' 
+																					: 'hover:bg-red-100 text-red-600'
+																			}`}
+																			title="Remover"
+																		>
+																			<X className="w-3 h-3" />
+																		</button>
+																	</div>
+																</div>
+															);
+														})}
+													</div>
+												</div>
+											)}
+											
+											{/* Lista de decisões disponíveis */}
 											{loadingDecisoes ? (
 												<div className={`p-3 border rounded-xl ${theme.bg.input} ${theme.border.input} text-center`}>
 													<p className={`text-xs ${theme.text.tertiary}`}>Carregando...</p>
 												</div>
 											) : decisoesDisponiveis && decisoesDisponiveis.length > 0 ? (
-												<div className={`border rounded-xl ${theme.bg.input} ${theme.border.input} max-h-40 overflow-y-auto`}>
-													{decisoesDisponiveis.map((decisao) => (
-														<div
-															key={decisao.id}
-															onClick={() => {
-																const goToArray = novaEtapa.goTo || [];
-																if (goToArray.includes(decisao.id)) {
-																	setNovaEtapa({ 
-																		...novaEtapa, 
-																		goTo: goToArray.filter(id => id !== decisao.id) 
-																	});
-																} else {
-																	setNovaEtapa({ 
-																		...novaEtapa, 
-																		goTo: [...goToArray, decisao.id] 
-																	});
-																}
-															}}
-															className={`p-2.5 border-b last:border-b-0 cursor-pointer transition-all ${
-																isDarkMode 
-																	? 'border-slate-700 hover:bg-slate-700/30' 
-																	: 'border-gray-200 hover:bg-gray-100'
-															} ${
-																(novaEtapa.goTo || []).includes(decisao.id) 
-																	? isDarkMode ? 'bg-blue-900/30' : 'bg-blue-50' 
-																	: ''
-															}`}
-														>
-															<div className="flex items-start gap-2">
-																<div className="pt-0.5">
-																	{(novaEtapa.goTo || []).includes(decisao.id) ? (
-																		<CheckSquare className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-																	) : (
-																		<Square className={`w-4 h-4 ${theme.text.tertiary}`} />
-																	)}
+												<div>
+													<p className={`text-xs mb-2 ${theme.text.tertiary} font-medium`}>
+														Clique para adicionar:
+													</p>
+													<div className={`border rounded-xl ${theme.bg.input} ${theme.border.input} max-h-40 overflow-y-auto`}>
+														{decisoesDisponiveis
+															.filter(decisao => !(novaEtapa.goTo || []).includes(decisao.id))
+															.map((decisao) => (
+																<div
+																	key={decisao.id}
+																	onClick={() => {
+																		setNovaEtapa({ 
+																			...novaEtapa, 
+																			goTo: [...(novaEtapa.goTo || []), decisao.id] 
+																		});
+																	}}
+																	className={`p-2.5 border-b last:border-b-0 cursor-pointer transition-all ${
+																		isDarkMode 
+																			? 'border-slate-700 hover:bg-slate-700/30' 
+																			: 'border-gray-200 hover:bg-gray-100'
+																	}`}
+																>
+																	<div className="flex items-start gap-2">
+																		<div className="pt-0.5">
+																			<Square className={`w-4 h-4 ${theme.text.tertiary}`} />
+																		</div>
+																		<div className="flex-1">
+																			<p className={`font-medium text-xs ${theme.text.primary}`}>
+																				{decisao.titulo}
+																			</p>
+																			{decisao.descricao && (
+																				<p className={`text-[10px] mt-0.5 ${theme.text.tertiary}`}>
+																					{decisao.descricao}
+																				</p>
+																			)}
+																		</div>
+																	</div>
 																</div>
-																<div className="flex-1">
-																	<p className={`font-medium text-xs ${theme.text.primary}`}>
-																		{decisao.titulo}
-																	</p>
-																	{decisao.descricao && (
-																		<p className={`text-[10px] mt-0.5 ${theme.text.tertiary}`}>
-																			{decisao.descricao}
-																		</p>
-																	)}
-																</div>
-															</div>
-														</div>
-													))}
+															))}
+													</div>
 												</div>
 											) : (
 												<div className={`p-3 border rounded-xl ${theme.bg.input} ${theme.border.input} text-center`}>
 													<p className={`text-xs ${theme.text.tertiary}`}>Nenhuma decisão disponível</p>
 												</div>
-											)}
-											
-											{(novaEtapa.goTo || []).length > 0 && (
-												<p className={`text-xs mt-2 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'} font-medium`}>
-													{(novaEtapa.goTo || []).length} decisão(ões) selecionada(s)
-												</p>
 											)}
 										</div>
 									)}
@@ -1023,7 +1231,7 @@ export default function Cadastro() {
 									<button
 										onClick={() => {
 											setShowEtapaForm(false);
-											setNovaEtapa({ trilhaId: null, parentId: null, titulo: "", descricao: "", arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null });
+											setNovaEtapa({ trilhaId: null, parentId: null, titulo: "", descricao: "", ordem: null, arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null });
 										}}
 										disabled={salvandoEtapa}
 										className={`px-4 py-2 font-semibold rounded-xl ${theme.bg.button} ${theme.text.secondary} ${theme.hover} transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
