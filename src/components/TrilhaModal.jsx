@@ -1,10 +1,108 @@
-import React from "react";
-import { X, FileText, Plus, Package } from "lucide-react";
+import React, { useState } from "react";
+import { X, FileText, Plus, Package, Loader2 } from "lucide-react";
 import EtapaTreeNode from "./EtapaTreeNode";
 import { useTheme } from "../contexts/ThemeContext";
+import {
+	DndContext,
+	closestCenter,
+	KeyboardSensor,
+	PointerSensor,
+	useSensor,
+	useSensors,
+	DragOverlay,
+} from '@dnd-kit/core';
+import {
+	arrayMove,
+	SortableContext,
+	sortableKeyboardCoordinates,
+	verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import API_BASE_URL from "../config/api";
 
-export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClose, onAddEtapa, onEditEtapa, onRemoveEtapa, onAddSubmenu, onEditSubmenu, onRemoveSubmenu }) {
+export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClose, onAddEtapa, onEditEtapa, onRemoveEtapa, onAddSubmenu, onEditSubmenu, onRemoveSubmenu, onReloadTrilhas }) {
 	const { theme, isDarkMode } = useTheme();
+	const [mensagemSucesso, setMensagemSucesso] = useState("");
+	const [activeId, setActiveId] = useState(null);
+	const [isUpdating, setIsUpdating] = useState(false);
+
+	// Configurar sensores para drag and drop
+	const sensors = useSensors(
+		useSensor(PointerSensor, {
+			activationConstraint: {
+				distance: 8,
+			},
+		}),
+		useSensor(KeyboardSensor, {
+			coordinateGetter: sortableKeyboardCoordinates,
+		})
+	);
+
+	// Função para atualizar ordem da etapa no backend
+	const atualizarOrdemEtapa = async (etapaId, novaOrdem) => {
+		try {
+			const response = await fetch(`${API_BASE_URL}/decisoes/${etapaId}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ ordem: novaOrdem }),
+			});
+
+			if (!response.ok) {
+				throw new Error('Erro ao atualizar ordem');
+			}
+		} catch (error) {
+			console.error('Erro ao atualizar ordem:', error);
+			throw error;
+		}
+	};
+
+	// Função para lidar com o início do drag
+	const handleDragStart = (event) => {
+		setActiveId(event.active.id);
+	};
+
+	// Função para lidar com o final do drag das etapas principais
+	const handleDragEnd = async (event) => {
+		const { active, over } = event;
+		setActiveId(null);
+
+		if (over && active.id !== over.id && trilha?.etapas) {
+			// Ativar loading IMEDIATAMENTE
+			setIsUpdating(true);
+			
+			const oldIndex = trilha.etapas.findIndex((e) => e.id === active.id);
+			const newIndex = trilha.etapas.findIndex((e) => e.id === over.id);
+
+			try {
+				// Reordenar localmente
+				const newEtapas = arrayMove(trilha.etapas, oldIndex, newIndex);
+				
+				// Atualizar a ordem da etapa movida
+				const etapaMoved = newEtapas[newIndex];
+				await atualizarOrdemEtapa(etapaMoved.id, newIndex + 1);
+				
+				// Recarregar apenas os dados das trilhas sem fechar o modal
+				if (onReloadTrilhas) {
+					await onReloadTrilhas();
+				}
+				
+				// Desativar loading e mostrar sucesso
+				setIsUpdating(false);
+				setMensagemSucesso("✓ Ordem atualizada com sucesso!");
+				setTimeout(() => setMensagemSucesso(""), 3000);
+			} catch (error) {
+				setIsUpdating(false);
+				console.error('Erro ao atualizar ordem:', error);
+				alert('Erro ao atualizar ordem. Tente novamente.');
+			}
+		}
+	};
+
+	// Função para lidar com o cancelamento do drag
+	const handleDragCancel = () => {
+		setActiveId(null);
+	};
 
 	if (!trilha) return null;
 
@@ -33,34 +131,85 @@ export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClo
 				</button>
 			</div>				{/* Conteúdo do Modal - Árvore Expansível */}
 				<div className="p-6 overflow-y-auto max-h-[calc(85vh-140px)]">
-					<div className="space-y-2">
-						{trilha.etapas?.map((etapa, index) => (
-							<EtapaTreeNode
-								key={etapa.id}
-								etapa={etapa}
-								level={0}
-								index={index + 1}
-								expandedNodes={expandedNodes}
-								onToggleNode={onToggleNode}
-								onAddChild={onAddEtapa}
-								onEdit={onEditEtapa}
-								onRemove={onRemoveEtapa}
-								trilhaId={trilha.id}
-								onAddSubmenu={onAddSubmenu}
-								onEditSubmenu={onEditSubmenu}
-								onRemoveSubmenu={onRemoveSubmenu}
-							/>
-						))}
-						
-						{/* Botão para adicionar etapa raiz */}
-						<button
-							onClick={() => onAddEtapa(trilha.id, null)}
-							className={`w-full mt-4 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-xl transition-all group ${isDarkMode ? 'bg-blue-600/20 border-blue-500/40 text-blue-400 hover:bg-blue-600/30 hover:border-blue-500/60' : 'bg-gray-100 border-gray-400 text-gray-700 hover:bg-gray-200 hover:border-gray-500'}`}
+					{/* Mensagem de Loading - Aparece IMEDIATAMENTE */}
+					{isUpdating && (
+						<div 
+							className={`mb-4 p-4 rounded-xl flex items-center gap-3 ${isDarkMode ? 'bg-gradient-to-r from-blue-900/80 to-purple-900/80 border border-blue-500/50 text-blue-200' : 'bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-300 text-blue-800'} shadow-xl animate-in slide-in-from-top-2 fade-in duration-200`}
+							style={{
+								animation: 'slideInFromTop 0.2s ease-out'
+							}}
 						>
-							<Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
-							<span className="font-semibold">Adicionar Nova Etapa Principal</span>
-						</button>
-					</div>
+							<Loader2 className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'} animate-spin`} />
+							<div className="flex-1">
+								<span className="font-semibold text-sm">Atualizando ordem...</span>
+								<p className={`text-xs mt-0.5 ${isDarkMode ? 'text-blue-300/70' : 'text-blue-600/70'}`}>Aguarde enquanto salvamos as alterações</p>
+							</div>
+							<div className="flex gap-1">
+								<div className={`w-2 h-2 rounded-full ${isDarkMode ? 'bg-blue-400' : 'bg-blue-600'} animate-bounce`} style={{ animationDelay: '0ms' }}></div>
+								<div className={`w-2 h-2 rounded-full ${isDarkMode ? 'bg-blue-400' : 'bg-blue-600'} animate-bounce`} style={{ animationDelay: '150ms' }}></div>
+								<div className={`w-2 h-2 rounded-full ${isDarkMode ? 'bg-blue-400' : 'bg-blue-600'} animate-bounce`} style={{ animationDelay: '300ms' }}></div>
+							</div>
+						</div>
+					)}
+
+					{/* Mensagem de Sucesso */}
+					{mensagemSucesso && !isUpdating && (
+						<div 
+							className={`mb-4 p-3 rounded-xl flex items-center gap-2 ${isDarkMode ? 'bg-gradient-to-r from-green-900/80 to-emerald-900/80 border border-green-500/50 text-green-200' : 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-300 text-green-800'} text-sm shadow-lg animate-in slide-in-from-top-2 fade-in duration-300`}
+							style={{
+								animation: 'slideInFromTop 0.3s ease-out'
+							}}
+						>
+							<div className={`w-2 h-2 rounded-full ${isDarkMode ? 'bg-green-400' : 'bg-green-600'} animate-pulse`}></div>
+							<span className="font-medium">{mensagemSucesso}</span>
+						</div>
+					)}
+
+					<DndContext
+						sensors={sensors}
+						collisionDetection={closestCenter}
+						onDragStart={handleDragStart}
+						onDragEnd={handleDragEnd}
+						onDragCancel={handleDragCancel}
+					>
+						<SortableContext
+							items={trilha.etapas?.map(e => e.id) || []}
+							strategy={verticalListSortingStrategy}
+						>
+							<div className="space-y-2">
+								{trilha.etapas?.map((etapa, index) => (
+									<EtapaTreeNode
+										key={etapa.id}
+										etapa={etapa}
+										level={0}
+										index={index + 1}
+										expandedNodes={expandedNodes}
+										onToggleNode={onToggleNode}
+										onAddChild={onAddEtapa}
+										onEdit={onEditEtapa}
+										onRemove={onRemoveEtapa}
+										trilhaId={trilha.id}
+										onAddSubmenu={onAddSubmenu}
+										onEditSubmenu={onEditSubmenu}
+										onRemoveSubmenu={onRemoveSubmenu}
+										isDraggable={true}
+										onUpdateOrder={atualizarOrdemEtapa}
+										onReloadTrilhas={onReloadTrilhas}
+										setIsUpdating={setIsUpdating}
+									/>
+								))}
+							</div>
+						</SortableContext>
+					</DndContext>
+					
+					{/* Botão para adicionar etapa raiz */}
+					<button
+						onClick={() => onAddEtapa(trilha.id, null)}
+						className={`w-full mt-4 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-xl transition-all group ${isDarkMode ? 'bg-blue-600/20 border-blue-500/40 text-blue-400 hover:bg-blue-600/30 hover:border-blue-500/60' : 'bg-gray-100 border-gray-400 text-gray-700 hover:bg-gray-200 hover:border-gray-500'}`}
+					>
+						<Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+						<span className="font-semibold">Adicionar Nova Etapa Principal</span>
+					</button>
 
 					{/* Resumo de Submenus */}
 					{(() => {

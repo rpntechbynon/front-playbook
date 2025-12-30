@@ -1,9 +1,97 @@
 import React from "react";
-import { ChevronDown, ChevronRight, Image, FileText, Plus, Trash2, Edit, Download, Eye, Paperclip, Menu, Package, CheckSquare } from "lucide-react";
+import { ChevronDown, ChevronRight, Image, FileText, Plus, Trash2, Edit, Download, Eye, Paperclip, Menu, Package, CheckSquare, GripVertical } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
+	DndContext,
+	closestCenter,
+	KeyboardSensor,
+	PointerSensor,
+	useSensor,
+	useSensors,
+} from '@dnd-kit/core';
+import {
+	arrayMove,
+	SortableContext,
+	sortableKeyboardCoordinates,
+	verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 
-export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNodes, onToggleNode, onAddChild, onEdit, onRemove, trilhaId, onAddSubmenu, onEditSubmenu, onRemoveSubmenu }) {
+export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNodes, onToggleNode, onAddChild, onEdit, onRemove, trilhaId, onAddSubmenu, onEditSubmenu, onRemoveSubmenu, isDraggable = false, onUpdateOrder, onReloadTrilhas, setIsUpdating }) {
 	const { theme, isDarkMode } = useTheme();
+	
+	// Hook de drag and drop
+	const {
+		attributes,
+		listeners,
+		setNodeRef,
+		transform,
+		transition,
+		isDragging,
+	} = useSortable({ 
+		id: etapa.id,
+		disabled: !isDraggable
+	});
+
+	const style = isDraggable ? {
+		transform: CSS.Transform.toString(transform),
+		transition: transition || 'transform 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease-out',
+		opacity: isDragging ? 0.6 : 1,
+		scale: isDragging ? '1.02' : '1',
+		boxShadow: isDragging ? '0 12px 40px rgba(0, 0, 0, 0.25)' : 'none',
+		zIndex: isDragging ? 50 : 'auto',
+	} : {};
+
+	// Configurar sensores para sub-etapas
+	const sensors = useSensors(
+		useSensor(PointerSensor, {
+			activationConstraint: {
+				distance: 8,
+			},
+		}),
+		useSensor(KeyboardSensor, {
+			coordinateGetter: sortableKeyboardCoordinates,
+		})
+	);
+
+	// Handler para drag das sub-etapas
+	const handleSubEtapasDragEnd = async (event) => {
+		const { active, over } = event;
+
+		if (over && active.id !== over.id && children) {
+			// Ativar loading IMEDIATAMENTE
+			if (setIsUpdating) {
+				setIsUpdating(true);
+			}
+			
+			const oldIndex = children.findIndex((e) => e.id === active.id);
+			const newIndex = children.findIndex((e) => e.id === over.id);
+
+			try {
+				const newChildren = arrayMove(children, oldIndex, newIndex);
+				const etapaMoved = newChildren[newIndex];
+				
+				if (onUpdateOrder) {
+					await onUpdateOrder(etapaMoved.id, newIndex + 1);
+					// Recarregar apenas os dados sem fechar o modal
+					if (onReloadTrilhas) {
+						await onReloadTrilhas();
+					}
+				}
+				
+				// Desativar loading
+				if (setIsUpdating) {
+					setIsUpdating(false);
+				}
+			} catch (error) {
+				if (setIsUpdating) {
+					setIsUpdating(false);
+				}
+				console.error('Erro ao atualizar ordem:', error);
+			}
+		}
+	};
 	// Suportar tanto all_children (API) quanto subEtapas (fallback)
 	const children = etapa.all_children || etapa.subEtapas || [];
 	const hasChildren = children.length > 0;
@@ -31,12 +119,23 @@ export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNod
 	};
 
 	return (
-		<div className="mb-2">
+		<div className="mb-2 transition-all duration-300 ease-out" ref={setNodeRef} style={style}>
 			<div 
-				className={`rounded-xl p-4 border transition-all ${level > 0 ? 'ml-6' : ''} ${theme.bg.input} ${theme.border.input} ${isDarkMode ? 'hover:border-blue-500/50' : 'hover:border-gray-400'}`}
+				className={`group rounded-xl p-4 border transition-all duration-300 ease-out ${level > 0 ? 'ml-6' : ''} ${theme.bg.input} ${theme.border.input} ${isDarkMode ? 'hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10' : 'hover:border-gray-400 hover:shadow-lg hover:shadow-gray-200/50'} relative`}
 				style={{ marginLeft: level > 0 ? `${level * 24}px` : '0' }}
 			>
-				<div className="flex items-start gap-3">
+				{/* Handle para arrastar - aparece ao passar o mouse */}
+				{isDraggable && (
+					<div
+						{...attributes}
+						{...listeners}
+						className={`absolute left-2 top-1/2 -translate-y-1/2 cursor-move p-1.5 rounded-lg transition-all duration-200 ease-out opacity-0 group-hover:opacity-100 transform group-hover:scale-110 shadow-md ${isDarkMode ? 'bg-gradient-to-br from-blue-600/90 to-purple-600/90 hover:from-blue-500/90 hover:to-purple-500/90' : 'bg-gradient-to-br from-blue-500/90 to-purple-500/90 hover:from-blue-400/90 hover:to-purple-400/90'}`}
+						title="Arrastar para reordenar"
+					>
+						<GripVertical className={`w-4 h-4 text-white`} />
+					</div>
+				)}
+				<div className={`flex items-start gap-3 ${isDraggable ? 'ml-6' : ''}`}>
 					{/* Botão de expandir se tiver filhos */}
 					<button
 						onClick={() => hasChildren && onToggleNode(etapa.id)}
@@ -365,23 +464,38 @@ export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNod
 			{/* Renderizar filhos se expandido */}
 			{hasChildren && isExpanded && (
 				<div className="mt-2">
-					{children.map((subEtapa, idx) => (
-						<EtapaTreeNode
-							key={subEtapa.id}
-							etapa={subEtapa}
-							level={level + 1}
-							index={idx + 1}
-							expandedNodes={expandedNodes}
-							onToggleNode={onToggleNode}
-							onAddChild={onAddChild}
-							onEdit={onEdit}
-							onRemove={onRemove}
-							trilhaId={trilhaId}
-							onAddSubmenu={onAddSubmenu}
-							onEditSubmenu={onEditSubmenu}
-							onRemoveSubmenu={onRemoveSubmenu}
-						/>
-					))}
+					<DndContext
+						sensors={sensors}
+						collisionDetection={closestCenter}
+						onDragEnd={handleSubEtapasDragEnd}
+					>
+						<SortableContext
+							items={children.map(e => e.id)}
+							strategy={verticalListSortingStrategy}
+						>
+							{children.map((subEtapa, idx) => (
+								<EtapaTreeNode
+									key={subEtapa.id}
+									etapa={subEtapa}
+									level={level + 1}
+									index={idx + 1}
+									expandedNodes={expandedNodes}
+									onToggleNode={onToggleNode}
+									onAddChild={onAddChild}
+									onEdit={onEdit}
+									onRemove={onRemove}
+									trilhaId={trilhaId}
+									onAddSubmenu={onAddSubmenu}
+									onEditSubmenu={onEditSubmenu}
+									onRemoveSubmenu={onRemoveSubmenu}
+									isDraggable={true}
+									onUpdateOrder={onUpdateOrder}
+									onReloadTrilhas={onReloadTrilhas}
+									setIsUpdating={setIsUpdating}
+								/>
+							))}
+						</SortableContext>
+					</DndContext>
 				</div>
 			)}
 		</div>
