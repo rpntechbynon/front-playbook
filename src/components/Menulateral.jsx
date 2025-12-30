@@ -72,15 +72,22 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
 
   const filterDecisoes = (items, term) => {
     return items.reduce((acc, item) => {
-      const matchesSearch = item.descricao.toLowerCase().includes(term) || 
+      const matchesSearch = (item.descricao && item.descricao.toLowerCase().includes(term)) || 
                            (item.titulo && item.titulo.toLowerCase().includes(term));
+      
+      // Verificar se algum submenu contém o termo de busca
+      const matchesSubmenu = item.submenus && item.submenus.some(submenu => 
+        (submenu.descricao && submenu.descricao.toLowerCase().includes(term)) || 
+        (submenu.titulo && submenu.titulo.toLowerCase().includes(term))
+      );
+      
       const filteredChildren = item.all_children ? filterDecisoes(item.all_children, term) : [];
       
-      if (matchesSearch || filteredChildren.length > 0) {
+      if (matchesSearch || matchesSubmenu || filteredChildren.length > 0) {
         acc.push({
           ...item,
           all_children: filteredChildren,
-          highlighted: matchesSearch
+          highlighted: matchesSearch || matchesSubmenu
         });
       }
       

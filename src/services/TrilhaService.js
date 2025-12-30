@@ -87,9 +87,24 @@ const TrilhaService = {
 			});
 			
 			if (!response.ok) {
-				const errorText = await response.text();
-				console.error('Erro da API:', errorText);
-				throw new Error('Erro ao criar trilha');
+				const contentType = response.headers.get('content-type');
+				if (contentType && contentType.includes('application/json')) {
+					const errorData = await response.json();
+					console.error('Erro da API:', errorData);
+					
+					// Se houver erros de arquivo, lançar com os detalhes
+					if (errorData.arquivos_com_erro) {
+						const error = new Error('Erro ao criar trilha');
+						error.arquivos_com_erro = errorData.arquivos_com_erro;
+						throw error;
+					}
+					
+					throw new Error(errorData.message || 'Erro ao criar trilha');
+				} else {
+					const errorText = await response.text();
+					console.error('Erro da API:', errorText);
+					throw new Error('Erro ao criar trilha');
+				}
 			}
 			return await response.json();
 		} catch (error) {
@@ -147,9 +162,24 @@ const TrilhaService = {
 			});
 			
 			if (!response.ok) {
-				const errorText = await response.text();
-				console.error('Erro da API:', errorText);
-				throw new Error('Erro ao atualizar trilha');
+				const contentType = response.headers.get('content-type');
+				if (contentType && contentType.includes('application/json')) {
+					const errorData = await response.json();
+					console.error('Erro da API:', errorData);
+					
+					// Se houver erros de arquivo, lançar com os detalhes
+					if (errorData.arquivos_com_erro) {
+						const error = new Error('Erro ao atualizar trilha');
+						error.arquivos_com_erro = errorData.arquivos_com_erro;
+						throw error;
+					}
+					
+					throw new Error(errorData.message || 'Erro ao atualizar trilha');
+				} else {
+					const errorText = await response.text();
+					console.error('Erro da API:', errorText);
+					throw new Error('Erro ao atualizar trilha');
+				}
 			}
 			return await response.json();
 		} catch (error) {

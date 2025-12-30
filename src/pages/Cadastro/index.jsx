@@ -38,6 +38,8 @@ export default function Cadastro() {
 	const [salvandoSubmenu, setSalvandoSubmenu] = useState(false);
 	const [produtosDisponiveis, setProdutosDisponiveis] = useState([]);
 	const [loadingProdutos, setLoadingProdutos] = useState(false);
+	const [errosArquivos, setErrosArquivos] = useState([]);
+	const [errosArquivosEtapa, setErrosArquivosEtapa] = useState([]);
 
 	// Buscar decisões disponíveis do endpoint
 	useEffect(() => {
@@ -190,9 +192,15 @@ export default function Cadastro() {
 			if (novaEtapa.parentId) {
 				setExpandedNodes(prev => ({ ...prev, [novaEtapa.parentId]: true }));
 			}
+			setErrosArquivosEtapa([]); // Limpar erros ao salvar com sucesso
 		} catch (error) {
 			console.error('Erro ao salvar etapa:', error);
-			alert('Erro ao salvar etapa. Tente novamente.');
+			// Verificar se há erros de arquivo
+			if (error.arquivos_com_erro) {
+				setErrosArquivosEtapa(error.arquivos_com_erro);
+			} else {
+				alert('Erro ao salvar etapa. Tente novamente.');
+			}
 		} finally {
 			setSalvandoEtapa(false);
 		}
@@ -449,8 +457,16 @@ export default function Cadastro() {
 			setIsEditingTrilha(false);
 			setTrilhaEditId(null);
 			setShowForm(false);
+			setErrosArquivos([]); // Limpar erros ao salvar com sucesso
 		} catch (err) {
-			alert("Erro ao salvar trilha: " + err.message);
+			// Verificar se há erros de arquivo
+			if (err.arquivos_com_erro) {
+				setErrosArquivos(err.arquivos_com_erro);
+				// Fazer scroll para o formulário para mostrar os erros
+				window.scrollTo({ top: 0, behavior: 'smooth' });
+			} else {
+				alert("Erro ao salvar trilha: " + err.message);
+			}
 		}
 	};
 
@@ -548,6 +564,7 @@ export default function Cadastro() {
 						setGoToSelecionados={setGoToSelecionados}
 						decisoesDisponiveis={decisoesDisponiveis}
 						loadingDecisoes={loadingDecisoes}
+						errosArquivos={errosArquivos}
 						onSave={salvarTrilha}
 						onCancel={() => {
 							setShowForm(false);
@@ -557,6 +574,7 @@ export default function Cadastro() {
 							setGoToSelecionados([]);
 							setIsEditingTrilha(false);
 							setTrilhaEditId(null);
+							setErrosArquivos([]);
 						}}
 						isEditing={isEditingTrilha}
 					/>
@@ -713,7 +731,7 @@ export default function Cadastro() {
 					onRemoveSubmenu={handleRemoveSubmenu}
 				/>					{/* Modal de Adicionar/Editar Etapa */}
 					{showEtapaForm && (
-						<div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => setShowEtapaForm(false)}>
+						<div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => { setShowEtapaForm(false); setErrosArquivosEtapa([]); }}>
 							<div className={`rounded-2xl shadow-2xl border max-w-md w-full max-h-[90vh] overflow-y-auto p-6 ${theme.bg.card} ${theme.border.card} transition-all duration-300`} onClick={(e) => e.stopPropagation()}>
 								<h3 className={`text-xl font-bold mb-4 ${theme.text.primary}`}>
 									{novaEtapa.isEdit ? "Editar Etapa" : (novaEtapa.parentId ? "Adicionar Sub-Etapa" : "Adicionar Etapa Principal")}
@@ -914,6 +932,28 @@ export default function Cadastro() {
 											className={`w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 ${theme.bg.input} ${theme.border.input} ${theme.text.secondary} ${isDarkMode ? 'focus:border-blue-500 focus:ring-blue-500/50 file:bg-blue-600/20 file:text-blue-400 hover:file:bg-blue-600/30' : 'focus:border-gray-600 focus:ring-gray-400 file:bg-gray-200 file:text-gray-800 hover:file:bg-gray-300'} transition-all file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:cursor-pointer`}
 											disabled={salvandoEtapa}
 										/>
+										
+										{errosArquivosEtapa.length > 0 && (
+											<div className={`mt-3 p-3 rounded-xl ${isDarkMode ? 'bg-red-900/20 border border-red-600/50' : 'bg-red-50 border border-red-200'}`}>
+												<div className={`flex items-start gap-2`}>
+													<AlertCircle className={`w-4 h-4 mt-0.5 ${isDarkMode ? 'text-red-400' : 'text-red-600'} flex-shrink-0`} />
+													<div className="flex-1">
+														<h4 className={`font-semibold text-xs ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>
+															Erro ao enviar arquivos:
+														</h4>
+														<ul className={`mt-1 space-y-1 text-xs ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>
+															{errosArquivosEtapa.map((erro, index) => (
+																<li key={index} className="flex flex-col">
+																	<span className="font-medium">{erro.nome}</span>
+																	<span className={`text-[10px] ${isDarkMode ? 'text-red-400' : 'text-red-500'}`}>{erro.erro}</span>
+																</li>
+															))}
+														</ul>
+													</div>
+												</div>
+											</div>
+										)}
+										
 										{novaEtapa.arquivos.length > 0 && (
 											<div className="mt-3 space-y-2">
 												<p className={`text-xs ${theme.text.tertiary} font-medium`}>

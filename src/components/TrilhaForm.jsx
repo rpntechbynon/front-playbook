@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Upload, X, Image, FileText, CheckSquare, Square } from "lucide-react";
+import { Plus, Upload, X, Image, FileText, CheckSquare, Square, AlertCircle } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
 export default function TrilhaForm({ 
@@ -15,7 +15,8 @@ export default function TrilhaForm({
 	loadingDecisoes,
 	onSave, 
 	onCancel,
-	isEditing = false
+	isEditing = false,
+	errosArquivos = []
 }) {
 	const { theme, isDarkMode } = useTheme();
 	
@@ -142,38 +143,59 @@ export default function TrilhaForm({
 					onChange={handleFileUpload}
 					className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${theme.bg.input} ${theme.border.input} ${theme.text.secondary} ${isDarkMode ? 'focus:border-blue-500 focus:ring-blue-500/50 file:bg-blue-600/20 file:text-blue-400 hover:file:bg-blue-600/30' : 'focus:border-gray-600 focus:ring-gray-400 file:bg-gray-200 file:text-gray-800 hover:file:bg-gray-300'} file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:cursor-pointer`}
 				/>
-				
-				{arquivos.length > 0 && (
-					<div className="mt-4 space-y-2">
-						<p className={`text-xs font-medium ${theme.text.tertiary}`}>
-							{arquivos.length} arquivo(s) selecionado(s)
-						</p>
-						<div className="flex flex-wrap gap-2">
-							{arquivos.map((arquivo, i) => {
-								const isImage = arquivo.type?.startsWith('image/');
-								
-								return (
-									<div key={i} className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-xs group transition-all ${isDarkMode ? 'bg-blue-900/20 border-blue-600/50 hover:border-blue-500' : 'bg-gray-100 border-gray-300 hover:border-gray-400'} ${theme.text.secondary}`}>
-										{isImage ? (
-											<Image className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-gray-700'}`} />
-										) : (
-											<FileText className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-gray-700'}`} />
-										)}
-										<span className="truncate max-w-[150px]">{arquivo.name}</span>
-										<button
-											onClick={() => removerArquivo(i)}
-											className={`transition-colors ml-1 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-800'}`}
-											title="Remover arquivo"
-										>
-											<X className="w-3 h-3" />
-										</button>
-									</div>
-								);
-							})}
+			
+			{errosArquivos.length > 0 && (
+				<div className={`mt-3 p-4 rounded-xl ${isDarkMode ? 'bg-red-900/20 border border-red-600/50' : 'bg-red-50 border border-red-200'}`}>
+					<div className={`flex items-start gap-2 mb-2`}>
+						<AlertCircle className={`w-5 h-5 mt-0.5 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
+						<div className="flex-1">
+							<h4 className={`font-semibold text-sm ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>
+								Erro ao enviar arquivos:
+							</h4>
+							<ul className={`mt-2 space-y-2 text-sm ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>
+								{errosArquivos.map((erro, index) => (
+									<li key={index} className="flex flex-col">
+										<span className="font-medium">{erro.nome}</span>
+										<span className={`text-xs ${isDarkMode ? 'text-red-400' : 'text-red-500'}`}>{erro.erro}</span>
+									</li>
+								))}
+							</ul>
 						</div>
 					</div>
-				)}
-			</div>
+				</div>
+			)}
+			
+			{arquivos.length > 0 && (
+				<div className="mt-4 space-y-2">
+					<p className={`text-xs font-medium ${theme.text.tertiary}`}>
+						{arquivos.length} arquivo(s) selecionado(s)
+					</p>
+					<div className="flex flex-wrap gap-2">
+						{arquivos.map((arquivo, i) => {
+							const isImage = arquivo.type?.startsWith('image/');
+							
+							return (
+								<div key={i} className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-xs group transition-all ${isDarkMode ? 'bg-blue-900/20 border-blue-600/50 hover:border-blue-500' : 'bg-gray-100 border-gray-300 hover:border-gray-400'} ${theme.text.secondary}`}>
+									{isImage ? (
+										<Image className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-gray-700'}`} />
+									) : (
+										<FileText className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-gray-700'}`} />
+									)}
+									<span className="truncate max-w-[150px]">{arquivo.name}</span>
+									<button
+										onClick={() => removerArquivo(i)}
+										className={`transition-colors ml-1 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-800'}`}
+										title="Remover arquivo"
+									>
+										<X className="w-3 h-3" />
+									</button>
+								</div>
+							);
+						})}
+					</div>
+				</div>
+			)}
+		</div>
 
 			<div className="flex gap-3">
 				<button
