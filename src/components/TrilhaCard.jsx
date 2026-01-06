@@ -10,9 +10,9 @@ export default function TrilhaCard({ trilha, onViewTree, onEdit, onDelete, onAdd
 	const submenusDirectos = trilha.submenus || [];
 
 	return (
-		<div className={`group rounded-2xl shadow-md border overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] h-[250px] flex flex-col ${theme.bg.card} ${theme.border.card}`}>
+		<div className={`group rounded-2xl shadow-md border overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] ${theme.bg.card} ${theme.border.card}`}>
 			{/* Header do Card */}
-			<div className={`border-b p-4 flex-shrink-0 ${isDarkMode ? 'bg-gradient-to-r from-blue-600/10 to-purple-600/10 border-slate-700' : 'bg-gradient-to-r from-gray-200 to-gray-100 border-gray-300'}`}>
+			<div className={`border-b p-4 ${isDarkMode ? 'bg-gradient-to-r from-blue-600/10 to-purple-600/10 border-slate-700' : 'bg-gradient-to-r from-gray-200 to-gray-100 border-gray-300'}`}>
 				<div className="flex items-start justify-between mb-2">
 					<div className="flex-1">
 						<h3 className={`text-lg font-bold mb-1 line-clamp-2 ${theme.text.primary}`}>{trilha.nome}</h3>
@@ -76,7 +76,7 @@ export default function TrilhaCard({ trilha, onViewTree, onEdit, onDelete, onAdd
 			</div>
 
 			{/* Preview das Etapas */}
-			<div className="p-4 flex-1 overflow-y-auto flex flex-col">
+			<div className="p-4">
 				<div className="space-y-2 mb-4">
 					{(trilha.etapas || []).slice(0, 2).map((etapa, index) => (
 						<div key={etapa.id} className="flex items-start gap-2 text-sm">
@@ -164,7 +164,7 @@ export default function TrilhaCard({ trilha, onViewTree, onEdit, onDelete, onAdd
 				)}
 
 			{/* Ações */}
-			<div className={`flex flex-col gap-2 pt-3 border-t flex-shrink-0 ${theme.border.card}`}>
+			<div className={`flex flex-col gap-2 pt-3 border-t ${theme.border.card}`}>
 				<button
 					onClick={() => onViewTree(trilha.id)}
 					className={`w-full flex items-center justify-center gap-2 px-3 py-2 border rounded-lg transition-all text-sm font-medium ${isDarkMode ? 'bg-blue-600/20 border-blue-500/30 text-blue-400 hover:bg-blue-600/30' : 'bg-gray-200 border-gray-300 text-gray-800 hover:bg-gray-300'}`}
