@@ -10,7 +10,7 @@ export default function TrilhaCard({ trilha, onViewTree, onEdit, onDelete, onAdd
 	const submenusDirectos = trilha.submenus || [];
 
 	return (
-		<div className={`group rounded-2xl shadow-md border overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] h-[600px] flex flex-col ${theme.bg.card} ${theme.border.card}`}>
+		<div className={`group rounded-2xl shadow-md border overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] h-[250px] flex flex-col ${theme.bg.card} ${theme.border.card}`}>
 			{/* Header do Card */}
 			<div className={`border-b p-4 flex-shrink-0 ${isDarkMode ? 'bg-gradient-to-r from-blue-600/10 to-purple-600/10 border-slate-700' : 'bg-gradient-to-r from-gray-200 to-gray-100 border-gray-300'}`}>
 				<div className="flex items-start justify-between mb-2">
