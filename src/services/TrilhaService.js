@@ -165,6 +165,14 @@ const TrilhaService = {
 					formData.append('arquivos[]', arquivo);
 				});
 			}
+			
+			// Adicionar IDs dos documentos existentes que devem ser mantidos
+			if (dados.documentos_manter && dados.documentos_manter.length > 0) {
+				console.log('Documentos existentes a manter:', dados.documentos_manter.length);
+				dados.documentos_manter.forEach((docId, index) => {
+					formData.append(`documentos_manter[${index}]`, docId);
+				});
+			}
 
 			// Usar POST com _method PUT para suportar FormData
 			const response = await fetch(`${API_BASE_URL}/decisoes/${id}`, {
@@ -392,6 +400,11 @@ const TrilhaService = {
 		// Adicionar ordem se fornecido (aceita 0)
 		if (etapa.ordem !== null && etapa.ordem !== undefined) {
 			dados.ordem = etapa.ordem;
+		}
+		
+		// Adicionar documentos_manter se fornecido
+		if (etapa.documentos_manter && etapa.documentos_manter.length > 0) {
+			dados.documentos_manter = etapa.documentos_manter;
 		}
 
 		return dados;

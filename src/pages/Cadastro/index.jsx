@@ -170,13 +170,16 @@ export default function Cadastro() {
 			// Se for edição, atualizar etapa existente
 			if (novaEtapa.isEdit) {
 				const arquivosNovos = novaEtapa.arquivos.filter(a => a instanceof File);
+				const documentosExistentes = novaEtapa.arquivos.filter(a => !(a instanceof File));
 				console.log('Arquivos novos para upload:', arquivosNovos.length);
+				console.log('Documentos existentes mantidos:', documentosExistentes.length);
 				
 				const dadosAtualizacao = {
 					descricao: novaEtapa.descricao,
 					titulo: novaEtapa.titulo,
 					ordem: novaEtapa.ordem,
-					produtos: novaEtapa.produtos || []
+					produtos: novaEtapa.produtos || [],
+					documentos_manter: documentosExistentes.filter(doc => doc.id).map(doc => doc.id)
 				};
 				
 				if (!novaEtapa.parentId) {
@@ -322,6 +325,16 @@ export default function Cadastro() {
 				arquivosNovos.forEach(arquivo => {
 					formData.append('arquivos[]', arquivo);
 				});
+				
+				// Adicionar IDs dos documentos existentes que devem ser mantidos
+				const documentosExistentes = submenuData.arquivos.filter(a => !(a instanceof File));
+				if (documentosExistentes.length > 0) {
+					documentosExistentes.forEach((doc, index) => {
+						if (doc.id) {
+							formData.append(`documentos_manter[${index}]`, doc.id);
+						}
+					});
+				}
 				
 				const response = await fetch(`${API_BASE_URL}/submenus/${submenuData.submenuId}`, {
 					method: 'POST',
@@ -1637,7 +1650,12 @@ export default function Cadastro() {
 																				{!isFile && <span className={`text-[10px] flex-shrink-0 ${isDarkMode ? 'text-blue-300' : 'text-gray-600'}`}>(salvo)</span>}
 																			</div>
 																			<button
-																				onClick={() => setSubmenuData({ ...submenuData, arquivos: submenuData.arquivos.filter((_, index) => index !== i) })}
+																				type="button"
+																				onClick={(e) => {
+																					e.preventDefault();
+																					e.stopPropagation();
+																					setSubmenuData({ ...submenuData, arquivos: submenuData.arquivos.filter((_, index) => index !== i) });
+																				}}
 																				className={`flex-shrink-0 p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
 																				title="Remover imagem"
 																				disabled={salvandoSubmenu}
@@ -1652,7 +1670,12 @@ export default function Cadastro() {
 																		<span className={`text-xs truncate flex-1 ${theme.text.secondary}`}>{nome}</span>
 																		{!isFile && <span className={`text-[10px] flex-shrink-0 ${isDarkMode ? 'text-blue-300' : 'text-gray-600'}`}>(salvo)</span>}
 																		<button
-																			onClick={() => setSubmenuData({ ...submenuData, arquivos: submenuData.arquivos.filter((_, index) => index !== i) })}
+																			type="button"
+																			onClick={(e) => {
+																				e.preventDefault();
+																				e.stopPropagation();
+																				setSubmenuData({ ...submenuData, arquivos: submenuData.arquivos.filter((_, index) => index !== i) });
+																			}}
 																			className={`flex-shrink-0 p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
 																			title="Remover arquivo"
 																			disabled={salvandoSubmenu}
