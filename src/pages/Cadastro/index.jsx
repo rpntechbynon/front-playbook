@@ -417,6 +417,52 @@ export default function Cadastro() {
 		setEtapaToDelete(null);
 	};
 
+	// Deletar documento de etapa/decisão
+	const handleDeleteDocumento = async (etapaId, documentoId, nomeDocumento) => {
+		if (!confirm(`Deseja realmente excluir o documento "${nomeDocumento}"?`)) return;
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/decisoes/${etapaId}/documentos/${documentoId}`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				throw new Error('Erro ao excluir documento');
+			}
+
+			// Recarregar as trilhas para atualizar a lista
+			await carregarTrilhas();
+			setMensagemSucesso("Documento excluído com sucesso!");
+			setTimeout(() => setMensagemSucesso(""), 3000);
+		} catch (error) {
+			console.error('Erro ao excluir documento:', error);
+			alert('Erro ao excluir documento. Tente novamente.');
+		}
+	};
+
+	// Deletar documento de submenu
+	const handleDeleteDocumentoSubmenu = async (submenuId, documentoId, nomeDocumento) => {
+		if (!confirm(`Deseja realmente excluir o documento "${nomeDocumento}"?`)) return;
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/submenus/${submenuId}/documentos/${documentoId}`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				throw new Error('Erro ao excluir documento do submenu');
+			}
+
+			// Recarregar as trilhas para atualizar a lista
+			await carregarTrilhas();
+			setMensagemSucesso("Documento do submenu excluído com sucesso!");
+			setTimeout(() => setMensagemSucesso(""), 3000);
+		} catch (error) {
+			console.error('Erro ao excluir documento do submenu:', error);
+			alert('Erro ao excluir documento do submenu. Tente novamente.');
+		}
+	};
+
 	const handleEditTrilha = (trilhaId) => {
 		const trilha = trilhas.find(t => t.id === trilhaId);
 		if (!trilha) return;
@@ -791,15 +837,17 @@ export default function Cadastro() {
 					<TrilhaModal
 						trilha={trilhas.find(t => t.id === expandedTrilha)}
 						expandedNodes={expandedNodes}
-					onToggleNode={toggleNode}
-					onClose={() => setExpandedTrilha(null)}
-					onAddEtapa={handleAddEtapa}
-					onEditEtapa={handleEditEtapa}
-					onRemoveEtapa={handleRemoveEtapa}
-					onAddSubmenu={handleAddSubmenu}
-					onEditSubmenu={handleEditSubmenu}
-					onRemoveSubmenu={handleRemoveSubmenu}
-				/>					{/* Modal de Adicionar/Editar Etapa */}
+						onToggleNode={toggleNode}
+						onClose={() => setExpandedTrilha(null)}
+						onAddEtapa={handleAddEtapa}
+						onEditEtapa={handleEditEtapa}
+						onRemoveEtapa={handleRemoveEtapa}
+						onAddSubmenu={handleAddSubmenu}
+						onEditSubmenu={handleEditSubmenu}
+						onRemoveSubmenu={handleRemoveSubmenu}
+						onDeleteDocumento={handleDeleteDocumento}
+						onDeleteDocumentoSubmenu={handleDeleteDocumentoSubmenu}
+					/>					{/* Modal de Adicionar/Editar Etapa */}
 					{showEtapaForm && (
 						<div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => { setShowEtapaForm(false); setErrosArquivosEtapa([]); }}>
 							<div className={`rounded-2xl shadow-2xl border max-w-md w-full max-h-[90vh] overflow-y-auto p-6 ${theme.bg.card} ${theme.border.card} transition-all duration-300`} onClick={(e) => e.stopPropagation()}>

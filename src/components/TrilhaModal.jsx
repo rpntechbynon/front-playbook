@@ -3,7 +3,7 @@ import { X, FileText, Plus, Package } from "lucide-react";
 import EtapaTreeNode from "./EtapaTreeNode";
 import { useTheme } from "../contexts/ThemeContext";
 
-export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClose, onAddEtapa, onEditEtapa, onRemoveEtapa, onAddSubmenu, onEditSubmenu, onRemoveSubmenu }) {
+export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClose, onAddEtapa, onEditEtapa, onRemoveEtapa, onAddSubmenu, onEditSubmenu, onRemoveSubmenu, onDeleteDocumento, onDeleteDocumentoSubmenu }) {
 	const { theme, isDarkMode } = useTheme();
 
 	if (!trilha) return null;
@@ -48,8 +48,8 @@ export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClo
 								trilhaId={trilha.id}
 								onAddSubmenu={onAddSubmenu}
 								onEditSubmenu={onEditSubmenu}
-								onRemoveSubmenu={onRemoveSubmenu}
-							/>
+								onRemoveSubmenu={onRemoveSubmenu}							onDeleteDocumento={onDeleteDocumento}
+							onDeleteDocumentoSubmenu={onDeleteDocumentoSubmenu}							/>
 						))}
 						
 						{/* Botão para adicionar etapa raiz */}

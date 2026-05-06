@@ -2,7 +2,7 @@ import React from "react";
 import { ChevronDown, ChevronRight, Image, FileText, Plus, Trash2, Edit, Download, Eye, Paperclip, Menu, Package, CheckSquare } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
-export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNodes, onToggleNode, onAddChild, onEdit, onRemove, trilhaId, onAddSubmenu, onEditSubmenu, onRemoveSubmenu }) {
+export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNodes, onToggleNode, onAddChild, onEdit, onRemove, trilhaId, onAddSubmenu, onEditSubmenu, onRemoveSubmenu, onDeleteDocumento, onDeleteDocumentoSubmenu }) {
 	const { theme, isDarkMode } = useTheme();
 	// Suportar tanto all_children (API) quanto subEtapas (fallback)
 	const children = etapa.all_children || etapa.subEtapas || [];
@@ -201,11 +201,39 @@ export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNod
 														
 														{/* Documentos do submenu */}
 														{submenu.documentos && submenu.documentos.length > 0 && (
-															<div className="mt-2 flex items-center gap-1">
-																<Paperclip className={`w-3 h-3 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-																<span className={`text-[10px] font-medium ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>
-																	{submenu.documentos.length} {submenu.documentos.length === 1 ? 'arquivo' : 'arquivos'}
-																</span>
+															<div className="mt-2 space-y-1">
+																<div className="flex items-center gap-1">
+																	<Paperclip className={`w-3 h-3 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+																	<span className={`text-[10px] font-medium ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>
+																		{submenu.documentos.length} {submenu.documentos.length === 1 ? 'arquivo' : 'arquivos'}
+																	</span>
+																</div>
+																<div className="flex flex-wrap gap-1 mt-1">
+																	{submenu.documentos.slice(0, 3).map((doc, idx) => {
+																		const isImg = doc.tipo?.startsWith('image/');
+																		return (
+																			<div key={doc.id || idx} className={`group/doc flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] ${isDarkMode ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
+																				{isImg ? <Image className="w-2.5 h-2.5" /> : <FileText className="w-2.5 h-2.5" />}
+																				<span className="truncate max-w-[60px]">{doc.nome}</span>
+																				{doc.id && onDeleteDocumentoSubmenu && (
+																					<button
+																						onClick={(e) => {
+																							e.stopPropagation();
+																							onDeleteDocumentoSubmenu(submenu.id, doc.id, doc.nome);
+																						}}
+																						className={`opacity-0 group-hover/doc:opacity-100 transition-opacity ${isDarkMode ? 'hover:text-red-300' : 'hover:text-red-600'}`}
+																						title="Excluir"
+																					>
+																						<Trash2 className="w-2.5 h-2.5" />
+																					</button>
+																				)}
+																			</div>
+																		);
+																	})}
+																	{submenu.documentos.length > 3 && (
+																		<span className={`text-[9px] ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>+{submenu.documentos.length - 3}</span>
+																	)}
+																</div>
 															</div>
 														)}
 													</div>
