@@ -476,6 +476,66 @@ export default function Cadastro() {
 		}
 	};
 
+	// Deletar documento do formulário de edição de submenu
+	const handleDeleteDocumentoSubmenuForm = async (documentoId, nomeDocumento) => {
+		if (!confirm(`Deseja realmente excluir o documento "${nomeDocumento}"?`)) return;
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/submenus/${submenuData.submenuId}/documentos/${documentoId}`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				throw new Error('Erro ao excluir documento do submenu');
+			}
+
+			// Remover da lista local
+			setSubmenuData({ 
+				...submenuData, 
+				arquivos: submenuData.arquivos.filter(doc => doc.id !== documentoId) 
+			});
+			
+			setMensagemSucesso("Documento excluído com sucesso!");
+			setTimeout(() => setMensagemSucesso(""), 3000);
+			
+			// Recarregar trilhas em background
+			await carregarTrilhas();
+		} catch (error) {
+			console.error('Erro ao excluir documento:', error);
+			alert('Erro ao excluir documento. Tente novamente.');
+		}
+	};
+
+	// Deletar documento do formulário de edição de etapa
+	const handleDeleteDocumentoEtapaForm = async (documentoId, nomeDocumento) => {
+		if (!confirm(`Deseja realmente excluir o documento "${nomeDocumento}"?`)) return;
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/decisoes/${novaEtapa.etapaId}/documentos/${documentoId}`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				throw new Error('Erro ao excluir documento da etapa');
+			}
+
+			// Remover da lista local
+			setNovaEtapa({ 
+				...novaEtapa, 
+				arquivos: novaEtapa.arquivos.filter(doc => doc.id !== documentoId) 
+			});
+			
+			setMensagemSucesso("Documento excluído com sucesso!");
+			setTimeout(() => setMensagemSucesso(""), 3000);
+			
+			// Recarregar trilhas em background
+			await carregarTrilhas();
+		} catch (error) {
+			console.error('Erro ao excluir documento:', error);
+			alert('Erro ao excluir documento. Tente novamente.');
+		}
+	};
+
 	const handleEditTrilha = (trilhaId) => {
 		const trilha = trilhas.find(t => t.id === trilhaId);
 		if (!trilha) return;
@@ -1266,9 +1326,20 @@ export default function Cadastro() {
 																				{!isFile && <span className={`text-[10px] flex-shrink-0 ${isDarkMode ? 'text-blue-300' : 'text-gray-600'}`}>(salvo)</span>}
 																			</div>
 																			<button
-																				onClick={() => setNovaEtapa({ ...novaEtapa, arquivos: novaEtapa.arquivos.filter((_, index) => index !== i) })}
+																				type="button"
+																				onClick={async (e) => {
+																					e.preventDefault();
+																					e.stopPropagation();
+																					// Se é arquivo existente (tem ID), deletar do backend
+																					if (!isFile && arquivo.id) {
+																						await handleDeleteDocumentoEtapaForm(arquivo.id, nome);
+																					} else {
+																						// Se é arquivo novo, apenas remover da lista
+																						setNovaEtapa({ ...novaEtapa, arquivos: novaEtapa.arquivos.filter((_, index) => index !== i) });
+																					}
+																				}}
 																				className={`flex-shrink-0 p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
-																				title="Remover imagem"
+																				title={!isFile && arquivo.id ? "Excluir imagem" : "Remover imagem"}
 																				disabled={salvandoEtapa}
 																			>
 																				<X className="w-4 h-4" />
@@ -1281,9 +1352,20 @@ export default function Cadastro() {
 																		<span className={`text-xs truncate flex-1 ${theme.text.secondary}`}>{nome}</span>
 																		{!isFile && <span className={`text-[10px] flex-shrink-0 ${isDarkMode ? 'text-blue-300' : 'text-gray-600'}`}>(salvo)</span>}
 																		<button
-																			onClick={() => setNovaEtapa({ ...novaEtapa, arquivos: novaEtapa.arquivos.filter((_, index) => index !== i) })}
+																			type="button"
+																			onClick={async (e) => {
+																				e.preventDefault();
+																				e.stopPropagation();
+																				// Se é arquivo existente (tem ID), deletar do backend
+																				if (!isFile && arquivo.id) {
+																					await handleDeleteDocumentoEtapaForm(arquivo.id, nome);
+																				} else {
+																					// Se é arquivo novo, apenas remover da lista
+																					setNovaEtapa({ ...novaEtapa, arquivos: novaEtapa.arquivos.filter((_, index) => index !== i) });
+																				}
+																			}}
 																			className={`flex-shrink-0 p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
-																			title="Remover arquivo"
+																			title={!isFile && arquivo.id ? "Excluir arquivo" : "Remover arquivo"}
 																			disabled={salvandoEtapa}
 																		>
 																			<X className="w-4 h-4" />
@@ -1651,13 +1733,19 @@ export default function Cadastro() {
 																			</div>
 																			<button
 																				type="button"
-																				onClick={(e) => {
+																				onClick={async (e) => {
 																					e.preventDefault();
 																					e.stopPropagation();
-																					setSubmenuData({ ...submenuData, arquivos: submenuData.arquivos.filter((_, index) => index !== i) });
+																					// Se é arquivo existente (tem ID), deletar do backend
+																					if (!isFile && arquivo.id) {
+																						await handleDeleteDocumentoSubmenuForm(arquivo.id, nome);
+																					} else {
+																						// Se é arquivo novo, apenas remover da lista
+																						setSubmenuData({ ...submenuData, arquivos: submenuData.arquivos.filter((_, index) => index !== i) });
+																					}
 																				}}
 																				className={`flex-shrink-0 p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
-																				title="Remover imagem"
+																				title={!isFile && arquivo.id ? "Excluir imagem" : "Remover imagem"}
 																				disabled={salvandoSubmenu}
 																			>
 																				<X className="w-4 h-4" />
@@ -1671,13 +1759,19 @@ export default function Cadastro() {
 																		{!isFile && <span className={`text-[10px] flex-shrink-0 ${isDarkMode ? 'text-blue-300' : 'text-gray-600'}`}>(salvo)</span>}
 																		<button
 																			type="button"
-																			onClick={(e) => {
+																			onClick={async (e) => {
 																				e.preventDefault();
 																				e.stopPropagation();
-																				setSubmenuData({ ...submenuData, arquivos: submenuData.arquivos.filter((_, index) => index !== i) });
+																				// Se é arquivo existente (tem ID), deletar do backend
+																				if (!isFile && arquivo.id) {
+																					await handleDeleteDocumentoSubmenuForm(arquivo.id, nome);
+																				} else {
+																					// Se é arquivo novo, apenas remover da lista
+																					setSubmenuData({ ...submenuData, arquivos: submenuData.arquivos.filter((_, index) => index !== i) });
+																				}
 																			}}
 																			className={`flex-shrink-0 p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
-																			title="Remover arquivo"
+																			title={!isFile && arquivo.id ? "Excluir arquivo" : "Remover arquivo"}
 																			disabled={salvandoSubmenu}
 																		>
 																			<X className="w-4 h-4" />
