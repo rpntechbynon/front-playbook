@@ -190,29 +190,54 @@ export default function TrilhaForm({
 			)}
 			
 			{arquivos.length > 0 && (
-				<div className="mt-4 space-y-2">
+				<div className="mt-4 space-y-3">
 					<p className={`text-xs font-medium ${theme.text.tertiary}`}>
 						{arquivos.length} arquivo(s) selecionado(s)
 					</p>
-					<div className="flex flex-wrap gap-2">
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 						{arquivos.map((arquivo, i) => {
 							const isImage = arquivo.type?.startsWith('image/');
+							const imageUrl = isImage ? URL.createObjectURL(arquivo) : null;
 							
 							return (
-								<div key={i} className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-xs group transition-all ${isDarkMode ? 'bg-blue-900/20 border-blue-600/50 hover:border-blue-500' : 'bg-gray-100 border-gray-300 hover:border-gray-400'} ${theme.text.secondary}`}>
-									{isImage ? (
-										<Image className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-gray-700'}`} />
+								<div key={i} className={`relative border rounded-xl p-3 transition-all ${isDarkMode ? 'bg-blue-900/20 border-blue-600/50 hover:border-blue-500' : 'bg-gray-100 border-gray-300 hover:border-gray-400'}`}>
+									{isImage && imageUrl ? (
+										<div className="space-y-2">
+											<div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black/5">
+												<img
+													src={imageUrl}
+													alt={arquivo.name}
+													className="w-full h-full object-cover"
+													onLoad={() => URL.revokeObjectURL(imageUrl)}
+												/>
+											</div>
+											<div className="flex items-center justify-between gap-2">
+												<div className="flex items-center gap-2 flex-1 min-w-0">
+													<Image className={`w-4 h-4 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-gray-700'}`} />
+													<span className={`text-xs truncate ${theme.text.secondary}`}>{arquivo.name}</span>
+												</div>
+												<button
+													onClick={() => removerArquivo(i)}
+													className={`flex-shrink-0 p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+													title="Remover imagem"
+												>
+													<X className="w-4 h-4" />
+												</button>
+											</div>
+										</div>
 									) : (
-										<FileText className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-gray-700'}`} />
+										<div className="flex items-center gap-2">
+											<FileText className={`w-4 h-4 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-gray-700'}`} />
+											<span className={`text-xs truncate flex-1 ${theme.text.secondary}`}>{arquivo.name}</span>
+											<button
+												onClick={() => removerArquivo(i)}
+												className={`flex-shrink-0 p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+												title="Remover arquivo"
+											>
+												<X className="w-4 h-4" />
+											</button>
+										</div>
 									)}
-									<span className="truncate max-w-[150px]">{arquivo.name}</span>
-									<button
-										onClick={() => removerArquivo(i)}
-										className={`transition-colors ml-1 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-800'}`}
-										title="Remover arquivo"
-									>
-										<X className="w-3 h-3" />
-									</button>
 								</div>
 							);
 						})}

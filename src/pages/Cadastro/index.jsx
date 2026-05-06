@@ -7,183 +7,6 @@ import TrilhaForm from "../../components/TrilhaForm";
 import TrilhaCard from "../../components/TrilhaCard";
 import TrilhaModal from "../../components/TrilhaModal";
 import API_BASE_URL from "../../config/api";
-import {
-	DndContext,
-	closestCenter,
-	KeyboardSensor,
-	PointerSensor,
-	useSensor,
-	useSensors,
-} from '@dnd-kit/core';
-import {
-	arrayMove,
-	SortableContext,
-	sortableKeyboardCoordinates,
-	verticalListSortingStrategy,
-	rectSortingStrategy,
-} from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-
-// Componente wrapper para tornar o card arrastável
-function SortableTrilhaCard({ trilha, onViewTree, onEdit, onDelete, onAddSubmenu, onEditSubmenu, onRemoveSubmenu }) {
-	const {
-		attributes,
-		listeners,
-		setNodeRef,
-		transform,
-		transition,
-		isDragging,
-	} = useSortable({ id: trilha.id });
-
-	const style = {
-		transform: CSS.Transform.toString(transform),
-		transition: transition || 'transform 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-		opacity: isDragging ? 0.6 : 1,
-		scale: isDragging ? '1.02' : '1',
-		boxShadow: isDragging ? '0 20px 60px rgba(0, 0, 0, 0.3)' : 'none',
-		zIndex: isDragging ? 50 : 'auto',
-	};
-
-	return (
-		<div ref={setNodeRef} style={style} className="transition-all duration-300 ease-out">
-			<div className="relative group">
-				{/* Handle para arrastar - ícone visível no canto superior esquerdo */}
-				<div
-					{...attributes}
-					{...listeners}
-					className="absolute top-2 left-2 z-10 cursor-move p-2 rounded-lg bg-gradient-to-br from-blue-600/90 to-purple-600/90 hover:from-blue-500/90 hover:to-purple-500/90 transition-all duration-200 ease-out opacity-0 group-hover:opacity-100 transform group-hover:scale-110 shadow-lg"
-					title="Arrastar para reordenar"
-				>
-					<GripVertical className="w-4 h-4 text-white" />
-				</div>
-				<TrilhaCard
-					trilha={trilha}
-					onViewTree={onViewTree}
-					onEdit={onEdit}
-					onDelete={onDelete}
-					onAddSubmenu={onAddSubmenu}
-					onEditSubmenu={onEditSubmenu}
-					onRemoveSubmenu={onRemoveSubmenu}
-				/>
-			</div>
-		</div>
-	);
-}
-
-// Componente wrapper para o modo lista
-function SortableTrilhaListItem({ trilha, onViewTree, onEdit, onDelete, onAddSubmenu, onEditSubmenu, onRemoveSubmenu, theme, isDarkMode }) {
-	const {
-		attributes,
-		listeners,
-		setNodeRef,
-		transform,
-		transition,
-		isDragging,
-	} = useSortable({ id: trilha.id });
-
-	const style = {
-		transform: CSS.Transform.toString(transform),
-		transition: transition || 'transform 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-		opacity: isDragging ? 0.6 : 1,
-		scale: isDragging ? '1.02' : '1',
-		boxShadow: isDragging ? '0 20px 60px rgba(0, 0, 0, 0.3)' : 'none',
-		zIndex: isDragging ? 50 : 'auto',
-	};
-
-	return (
-		<div ref={setNodeRef} style={style} className="relative group transition-all duration-300 ease-out">
-			<div 
-				className={`${theme.bg.card} rounded-xl ${theme.shadow.button} border ${theme.border.card} overflow-hidden hover:${theme.shadow.card} transition-all duration-300 hover:scale-[1.01]`}
-			>
-				<div className="flex items-center gap-4 p-4">
-					{/* Handle para arrastar */}
-					<div
-						{...attributes}
-						{...listeners}
-						className={`cursor-move p-2 rounded-lg transition-all duration-200 ease-out flex-shrink-0 transform hover:scale-110 ${isDarkMode ? 'hover:bg-blue-600/30' : 'hover:bg-blue-100'}`}
-						title="Arrastar para reordenar"
-					>
-						<GripVertical className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-					</div>
-
-					{/* Ícone/Número */}
-					<div className={`w-16 h-16 ${isDarkMode ? 'bg-gradient-to-br from-blue-500 to-purple-600' : 'bg-gradient-to-br from-gray-700 to-gray-900'} rounded-xl flex items-center justify-center ${theme.shadow.button} flex-shrink-0`}>
-						<span className="text-white font-black text-xl">{trilha.etapas?.length || 0}</span>
-					</div>
-
-					{/* Informações */}
-					<div className="flex-1 min-w-0">
-						<h3 className={`text-lg font-bold ${theme.text.primary} mb-1 truncate`}>{trilha.nome}</h3>
-						<div className={`flex items-center gap-4 text-xs ${theme.text.tertiary}`}>
-							<span className="flex items-center gap-1">
-								<FileText className="w-3 h-3" />
-								{trilha.etapas?.length || 0} etapas
-							</span>
-							<span className="flex items-center gap-1">
-								<ImageIcon className="w-3 h-3" />
-								{trilha.etapas?.reduce((acc, e) => acc + (e.anexos?.length || 0), 0) || 0} anexos
-							</span>
-							{(() => {
-								const contarSubmenus = (etapas) => {
-									let total = 0;
-									const processar = (items) => {
-										items?.forEach(item => {
-											total += item.submenus?.length || 0;
-											if (item.subEtapas?.length > 0) processar(item.subEtapas);
-											if (item.all_children?.length > 0) processar(item.all_children);
-										});
-									};
-									processar(etapas);
-									return total;
-								};
-								const totalSubmenus = contarSubmenus(trilha.etapas);
-								return totalSubmenus > 0 ? (
-									<span className={`flex items-center gap-1 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'} font-semibold`}>
-										<span className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${isDarkMode ? 'bg-purple-500/20' : 'bg-purple-100'}`}>M</span>
-										{totalSubmenus} {totalSubmenus === 1 ? 'submenu' : 'submenus'}
-									</span>
-								) : null;
-							})()}
-						</div>
-					</div>
-					
-					{/* Ações */}
-					<div className="flex gap-2 flex-shrink-0">
-						<button
-							onClick={() => onViewTree(trilha.id)}
-							className={`flex items-center gap-2 px-4 py-2 ${isDarkMode ? 'bg-blue-600/20 border-blue-500/30 text-blue-400 hover:bg-blue-600/30' : 'bg-gray-200 border-gray-300 text-gray-800 hover:bg-gray-300'} border rounded-lg transition-all text-sm font-medium`}
-						>
-							<Maximize2 className="w-4 h-4" />
-							Ver Árvore
-						</button>
-						<button 
-							onClick={() => onAddSubmenu(trilha.id)}
-							className={`p-2 ${isDarkMode ? 'bg-purple-600/20 border-purple-500/30 text-purple-400 hover:bg-purple-600/30' : 'bg-purple-100 border-purple-300 text-purple-700 hover:bg-purple-200'} border rounded-lg transition-all`}
-							title="Adicionar submenu"
-						>
-							<Menu className="w-4 h-4" />
-						</button>
-						<button 
-							onClick={() => onEdit(trilha.id)}
-							className={`p-2 ${isDarkMode ? 'bg-slate-700/50 border-slate-600 hover:bg-slate-700' : 'bg-gray-200 border-gray-300 hover:bg-gray-300'} ${theme.text.secondary} border rounded-lg transition-all`}
-							title="Editar"
-						>
-							<Edit className="w-4 h-4" />
-						</button>
-						<button
-							onClick={() => onDelete(trilha.id)}
-							className={`p-2 ${isDarkMode ? 'bg-red-600/20 border-red-500/30 text-red-400 hover:bg-red-600/30' : 'bg-red-100 border-red-300 text-red-700 hover:bg-red-200'} border rounded-lg transition-all`}
-							title="Excluir"
-						>
-							<Trash2 className="w-4 h-4" />
-						</button>
-					</div>
-				</div>
-			</div>
-		</div>
-	);
-}
 
 export default function Cadastro() {
 	const { trilhas, loading, error, adicionarTrilha, excluirTrilha: excluirTrilhaAPI, atualizarTrilha, carregarTrilhas } = useTrilhas();
@@ -218,54 +41,6 @@ export default function Cadastro() {
 	const [loadingProdutos, setLoadingProdutos] = useState(false);
 	const [errosArquivos, setErrosArquivos] = useState([]);
 	const [errosArquivosEtapa, setErrosArquivosEtapa] = useState([]);
-
-	// Configurar sensores para drag and drop
-	const sensors = useSensors(
-		useSensor(PointerSensor, {
-			activationConstraint: {
-				distance: 8, // Precisa arrastar 8px antes de iniciar o drag
-			},
-		}),
-		useSensor(KeyboardSensor, {
-			coordinateGetter: sortableKeyboardCoordinates,
-		})
-	);
-
-	// Função para lidar com o final do drag
-	const handleDragEnd = async (event) => {
-		const { active, over } = event;
-
-		if (over && active.id !== over.id) {
-			const oldIndex = trilhas.findIndex((t) => t.id === active.id);
-			const newIndex = trilhas.findIndex((t) => t.id === over.id);
-
-			// Reordenar localmente primeiro para feedback imediato
-			const newTrilhas = arrayMove(trilhas, oldIndex, newIndex);
-			
-			// Atualizar as ordens
-			const trilhasComNovaOrdem = newTrilhas.map((trilha, index) => ({
-				...trilha,
-				ordem: index + 1
-			}));
-
-			try {
-				// Atualizar a ordem da trilha movida no backend
-				const trilhaMoved = trilhasComNovaOrdem[newIndex];
-				await atualizarTrilha(trilhaMoved.id, { ordem: trilhaMoved.ordem });
-				
-				// Recarregar as trilhas para garantir sincronização
-				await carregarTrilhas();
-				
-				setMensagemSucesso("Ordem atualizada com sucesso!");
-				setTimeout(() => setMensagemSucesso(""), 3000);
-			} catch (error) {
-				console.error('Erro ao atualizar ordem:', error);
-				// Recarregar trilhas para reverter a mudança local
-				await carregarTrilhas();
-				alert('Erro ao atualizar ordem. Tente novamente.');
-			}
-		}
-	};
 
 	// Buscar decisões disponíveis do endpoint
 	useEffect(() => {
@@ -912,67 +687,110 @@ export default function Cadastro() {
 								<p className={`text-lg ${theme.text.tertiary}`}>Nenhuma trilha cadastrada ainda.</p>
 								<p className={`text-sm mt-2 ${theme.text.muted}`}>Clique em "Nova Trilha" para começar.</p>
 							</div>
-					) : viewMode === 'grid' ? (
-						<DndContext
-							sensors={sensors}
-							collisionDetection={closestCenter}
-							onDragEnd={handleDragEnd}
-						>
-							<SortableContext
-								items={trilhas.map(t => t.id)}
-								strategy={rectSortingStrategy}
-							>
-								<div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-									{trilhas.map((trilha) => (
-										<SortableTrilhaCard
-											key={trilha.id}
-											trilha={trilha}
-											onViewTree={setExpandedTrilha}
-											onEdit={handleEditTrilha}
-											onDelete={excluirTrilha}
-											onAddSubmenu={handleAddSubmenu}
-											onEditSubmenu={handleEditSubmenu}
-											onRemoveSubmenu={handleRemoveSubmenu}
-										/>
-									))}
-								</div>
-							</SortableContext>
-						</DndContext>
-					) : (
-						<DndContext
-							sensors={sensors}
-							collisionDetection={closestCenter}
-							onDragEnd={handleDragEnd}
-						>
-							<SortableContext
-								items={trilhas.map(t => t.id)}
-								strategy={verticalListSortingStrategy}
-							>
-								<div className="space-y-3">
-									{trilhas.map((trilha) => (
-										<SortableTrilhaListItem
-											key={trilha.id}
-											trilha={trilha}
-											onViewTree={setExpandedTrilha}
-											onEdit={handleEditTrilha}
-											onDelete={excluirTrilha}
-											onAddSubmenu={handleAddSubmenu}
-											onEditSubmenu={handleEditSubmenu}
-											onRemoveSubmenu={handleRemoveSubmenu}
-											theme={theme}
-											isDarkMode={isDarkMode}
-										/>
-									))}
-								</div>
-							</SortableContext>
-						</DndContext>
-					)}
+						) : viewMode === 'grid' ? (
+							<div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+								{trilhas.map((trilha) => (
+									<TrilhaCard
+										key={trilha.id}
+										trilha={trilha}
+										onViewTree={setExpandedTrilha}
+										onEdit={handleEditTrilha}
+										onDelete={excluirTrilha}
+										onAddSubmenu={handleAddSubmenu}
+										onEditSubmenu={handleEditSubmenu}
+										onRemoveSubmenu={handleRemoveSubmenu}
+									/>
+								))}
+							</div>
+						) : (
+							<div className="space-y-3">
+								{trilhas.map((trilha) => (
+									<div 
+										key={trilha.id} 
+										className={`group ${theme.bg.card} rounded-xl ${theme.shadow.button} border ${theme.border.card} overflow-hidden hover:${theme.shadow.card} transition-all duration-300 hover:scale-[1.01]`}
+									>
+										<div className="flex items-center gap-4 p-4">
+											{/* Ícone/Número */}
+											<div className={`w-16 h-16 ${isDarkMode ? 'bg-gradient-to-br from-blue-500 to-purple-600' : 'bg-gradient-to-br from-gray-700 to-gray-900'} rounded-xl flex items-center justify-center ${theme.shadow.button} flex-shrink-0`}>
+												<span className="text-white font-black text-xl">{trilha.etapas?.length || 0}</span>
+											</div>
+
+										{/* Informações */}
+										<div className="flex-1 min-w-0">
+											<h3 className={`text-lg font-bold ${theme.text.primary} mb-1 truncate`}>{trilha.nome}</h3>
+											<div className={`flex items-center gap-4 text-xs ${theme.text.tertiary}`}>
+												<span className="flex items-center gap-1">
+													<FileText className="w-3 h-3" />
+													{trilha.etapas?.length || 0} etapas
+												</span>
+												<span className="flex items-center gap-1">
+													<ImageIcon className="w-3 h-3" />
+													{trilha.etapas?.reduce((acc, e) => acc + (e.anexos?.length || 0), 0) || 0} anexos
+												</span>
+												{(() => {
+													const contarSubmenus = (etapas) => {
+														let total = 0;
+														const processar = (items) => {
+															items?.forEach(item => {
+																total += item.submenus?.length || 0;
+																if (item.subEtapas?.length > 0) processar(item.subEtapas);
+																if (item.all_children?.length > 0) processar(item.all_children);
+															});
+														};
+														processar(etapas);
+														return total;
+													};
+													const totalSubmenus = contarSubmenus(trilha.etapas);
+													return totalSubmenus > 0 ? (
+														<span className={`flex items-center gap-1 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'} font-semibold`}>
+															<span className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${isDarkMode ? 'bg-purple-500/20' : 'bg-purple-100'}`}>M</span>
+															{totalSubmenus} {totalSubmenus === 1 ? 'submenu' : 'submenus'}
+														</span>
+													) : null;
+												})()}
+											</div>
+										</div>											{/* Ações */}
+											<div className="flex gap-2 flex-shrink-0">
+												<button
+													onClick={() => setExpandedTrilha(trilha.id)}
+													className={`flex items-center gap-2 px-4 py-2 ${isDarkMode ? 'bg-blue-600/20 border-blue-500/30 text-blue-400 hover:bg-blue-600/30' : 'bg-gray-200 border-gray-300 text-gray-800 hover:bg-gray-300'} border rounded-lg transition-all text-sm font-medium`}
+												>
+													<Maximize2 className="w-4 h-4" />
+													Ver Árvore
+												</button>
+												<button 
+													onClick={() => handleAddSubmenu(trilha.id)}
+													className={`p-2 ${isDarkMode ? 'bg-purple-600/20 border-purple-500/30 text-purple-400 hover:bg-purple-600/30' : 'bg-purple-100 border-purple-300 text-purple-700 hover:bg-purple-200'} border rounded-lg transition-all`}
+													title="Adicionar submenu"
+												>
+													<Menu className="w-4 h-4" />
+												</button>
+												<button 
+													onClick={() => handleEditTrilha(trilha.id)}
+													className={`p-2 ${isDarkMode ? 'bg-slate-700/50 border-slate-600 hover:bg-slate-700' : 'bg-gray-200 border-gray-300 hover:bg-gray-300'} ${theme.text.secondary} border rounded-lg transition-all`}
+													title="Editar"
+												>
+													<Edit className="w-4 h-4" />
+												</button>
+												<button
+													onClick={() => excluirTrilha(trilha.id)}
+													className={`p-2 ${isDarkMode ? 'bg-red-600/20 border-red-500/30 text-red-400 hover:bg-red-600/30' : 'bg-red-100 border-red-300 text-red-700 hover:bg-red-200'} border rounded-lg transition-all`}
+													title="Excluir"
+												>
+													<Trash2 className="w-4 h-4" />
+												</button>
+											</div>
+										</div>
+									</div>
+								))}
+							</div>
+						)}
 					</div>
 
-				{/* Modal de Detalhes - Visualização em Árvore */}
-				<TrilhaModal
-					trilha={trilhas.find(t => t.id === expandedTrilha)}
-					expandedNodes={expandedNodes}
+					{/* Modal de Detalhes - Visualização em Árvore */}
+					<TrilhaModal
+						trilha={trilhas.find(t => t.id === expandedTrilha)}
+						expandedNodes={expandedNodes}
 					onToggleNode={toggleNode}
 					onClose={() => setExpandedTrilha(null)}
 					onAddEtapa={handleAddEtapa}
@@ -981,7 +799,6 @@ export default function Cadastro() {
 					onAddSubmenu={handleAddSubmenu}
 					onEditSubmenu={handleEditSubmenu}
 					onRemoveSubmenu={handleRemoveSubmenu}
-					onReloadTrilhas={carregarTrilhas}
 				/>					{/* Modal de Adicionar/Editar Etapa */}
 					{showEtapaForm && (
 						<div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => { setShowEtapaForm(false); setErrosArquivosEtapa([]); }}>
@@ -1346,7 +1163,7 @@ export default function Cadastro() {
 										)}
 										
 										{novaEtapa.arquivos.length > 0 && (
-											<div className="mt-3 space-y-2">
+											<div className="mt-3 space-y-3">
 												<p className={`text-xs ${theme.text.tertiary} font-medium`}>
 													{novaEtapa.arquivos.length} arquivo(s):
 													{novaEtapa.arquivos.filter(a => a instanceof File).length > 0 && (
@@ -1360,32 +1177,57 @@ export default function Cadastro() {
 														</span>
 													)}
 												</p>
-												<div className="flex flex-wrap gap-2">
+												<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 													{novaEtapa.arquivos.map((arquivo, i) => {
 														const isFile = arquivo instanceof File;
 														const isImage = isFile 
 															? arquivo.type?.startsWith('image/') 
 															: arquivo.tipo?.startsWith('image/') || arquivo.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
 														const nome = isFile ? arquivo.name : arquivo.nome;
+														const imageUrl = isFile && isImage ? URL.createObjectURL(arquivo) : (isImage && arquivo.url_presignada) || null;
 														
 														return (
-															<div key={i} className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg text-xs ${theme.text.secondary} group transition-all ${isFile ? (isDarkMode ? 'bg-green-900/20 border-green-600/50' : 'bg-green-50 border-green-300') : (isDarkMode ? 'bg-blue-900/20 border-blue-600/50' : 'bg-gray-100 border-gray-300')} ${isDarkMode ? 'hover:border-slate-500' : 'hover:border-gray-400'}`}>
-																{isImage ? (
-																	<ImageIcon className={`w-3 h-3 ${isFile ? (isDarkMode ? 'text-green-400' : 'text-green-700') : (isDarkMode ? 'text-blue-400' : 'text-gray-700')}`} />
+															<div key={i} className={`relative border rounded-xl p-3 transition-all ${isFile ? (isDarkMode ? 'bg-green-900/20 border-green-600/50 hover:border-green-500' : 'bg-green-50 border-green-300 hover:border-green-400') : (isDarkMode ? 'bg-blue-900/20 border-blue-600/50 hover:border-blue-500' : 'bg-gray-100 border-gray-300 hover:border-gray-400')}`}>
+																{isImage && imageUrl ? (
+																	<div className="space-y-2">
+																		<div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black/5">
+																			<img
+																				src={imageUrl}
+																				alt={nome}
+																				className="w-full h-full object-cover"
+																				onLoad={() => isFile && imageUrl && URL.revokeObjectURL(imageUrl)}
+																			/>
+																		</div>
+																		<div className="flex items-center justify-between gap-2">
+																			<div className="flex items-center gap-2 flex-1 min-w-0">
+																				<ImageIcon className={`w-4 h-4 flex-shrink-0 ${isFile ? (isDarkMode ? 'text-green-400' : 'text-green-700') : (isDarkMode ? 'text-blue-400' : 'text-gray-700')}`} />
+																				<span className={`text-xs truncate ${theme.text.secondary}`}>{nome}</span>
+																				{!isFile && <span className={`text-[10px] flex-shrink-0 ${isDarkMode ? 'text-blue-300' : 'text-gray-600'}`}>(salvo)</span>}
+																			</div>
+																			<button
+																				onClick={() => setNovaEtapa({ ...novaEtapa, arquivos: novaEtapa.arquivos.filter((_, index) => index !== i) })}
+																				className={`flex-shrink-0 p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+																				title="Remover imagem"
+																				disabled={salvandoEtapa}
+																			>
+																				<X className="w-4 h-4" />
+																			</button>
+																		</div>
+																	</div>
 																) : (
-																	<FileText className={`w-3 h-3 ${isFile ? (isDarkMode ? 'text-green-400' : 'text-green-700') : (isDarkMode ? 'text-blue-400' : 'text-gray-700')}`} />
-																)}
-																<span className="truncate max-w-[120px]">{nome}</span>
-																{!isFile && <span className={`text-[10px] ${isDarkMode ? 'text-blue-300' : 'text-gray-600'}`}>(já salvo)</span>}
-																{isFile && (
-																	<button
-																		onClick={() => setNovaEtapa({ ...novaEtapa, arquivos: novaEtapa.arquivos.filter((_, index) => index !== i) })}
-																		className={`${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-800'} transition-colors ml-1`}
-																		title="Remover arquivo"
-																		disabled={salvandoEtapa}
-																	>
-																		<X className="w-3 h-3" />
-																	</button>
+																	<div className="flex items-center gap-2">
+																		<FileText className={`w-4 h-4 flex-shrink-0 ${isFile ? (isDarkMode ? 'text-green-400' : 'text-green-700') : (isDarkMode ? 'text-blue-400' : 'text-gray-700')}`} />
+																		<span className={`text-xs truncate flex-1 ${theme.text.secondary}`}>{nome}</span>
+																		{!isFile && <span className={`text-[10px] flex-shrink-0 ${isDarkMode ? 'text-blue-300' : 'text-gray-600'}`}>(salvo)</span>}
+																		<button
+																			onClick={() => setNovaEtapa({ ...novaEtapa, arquivos: novaEtapa.arquivos.filter((_, index) => index !== i) })}
+																			className={`flex-shrink-0 p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+																			title="Remover arquivo"
+																			disabled={salvandoEtapa}
+																		>
+																			<X className="w-4 h-4" />
+																		</button>
+																	</div>
 																)}
 															</div>
 														);
@@ -1715,36 +1557,61 @@ export default function Cadastro() {
 											disabled={salvandoSubmenu}
 										/>
 										{submenuData.arquivos.length > 0 && (
-											<div className="mt-3 space-y-2">
+											<div className="mt-3 space-y-3">
 												<p className={`text-xs ${theme.text.tertiary} font-medium`}>
 													{submenuData.arquivos.length} arquivo(s)
 												</p>
-												<div className="flex flex-wrap gap-2">
+												<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 													{submenuData.arquivos.map((arquivo, i) => {
 														const isFile = arquivo instanceof File;
 														const isImage = isFile 
 															? arquivo.type?.startsWith('image/') 
 															: arquivo.tipo?.startsWith('image/') || arquivo.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
 														const nome = isFile ? arquivo.name : arquivo.nome;
+														const imageUrl = isFile && isImage ? URL.createObjectURL(arquivo) : (isImage && arquivo.url_presignada) || null;
 														
 														return (
-															<div key={i} className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg text-xs ${theme.text.secondary} group transition-all ${isFile ? (isDarkMode ? 'bg-green-900/20 border-green-600/50' : 'bg-green-50 border-green-300') : (isDarkMode ? 'bg-blue-900/20 border-blue-600/50' : 'bg-gray-100 border-gray-300')} ${isDarkMode ? 'hover:border-slate-500' : 'hover:border-gray-400'}`}>
-																{isImage ? (
-																	<ImageIcon className={`w-3 h-3 ${isFile ? (isDarkMode ? 'text-green-400' : 'text-green-700') : (isDarkMode ? 'text-blue-400' : 'text-gray-700')}`} />
+															<div key={i} className={`relative border rounded-xl p-3 transition-all ${isFile ? (isDarkMode ? 'bg-green-900/20 border-green-600/50 hover:border-green-500' : 'bg-green-50 border-green-300 hover:border-green-400') : (isDarkMode ? 'bg-blue-900/20 border-blue-600/50 hover:border-blue-500' : 'bg-gray-100 border-gray-300 hover:border-gray-400')}`}>
+																{isImage && imageUrl ? (
+																	<div className="space-y-2">
+																		<div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black/5">
+																			<img
+																				src={imageUrl}
+																				alt={nome}
+																				className="w-full h-full object-cover"
+																				onLoad={() => isFile && imageUrl && URL.revokeObjectURL(imageUrl)}
+																			/>
+																		</div>
+																		<div className="flex items-center justify-between gap-2">
+																			<div className="flex items-center gap-2 flex-1 min-w-0">
+																				<ImageIcon className={`w-4 h-4 flex-shrink-0 ${isFile ? (isDarkMode ? 'text-green-400' : 'text-green-700') : (isDarkMode ? 'text-blue-400' : 'text-gray-700')}`} />
+																				<span className={`text-xs truncate ${theme.text.secondary}`}>{nome}</span>
+																				{!isFile && <span className={`text-[10px] flex-shrink-0 ${isDarkMode ? 'text-blue-300' : 'text-gray-600'}`}>(salvo)</span>}
+																			</div>
+																			<button
+																				onClick={() => setSubmenuData({ ...submenuData, arquivos: submenuData.arquivos.filter((_, index) => index !== i) })}
+																				className={`flex-shrink-0 p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+																				title="Remover imagem"
+																				disabled={salvandoSubmenu}
+																			>
+																				<X className="w-4 h-4" />
+																			</button>
+																		</div>
+																	</div>
 																) : (
-																	<FileText className={`w-3 h-3 ${isFile ? (isDarkMode ? 'text-green-400' : 'text-green-700') : (isDarkMode ? 'text-blue-400' : 'text-gray-700')}`} />
-																)}
-																<span className="truncate max-w-[120px]">{nome}</span>
-																{!isFile && <span className={`text-[10px] ${isDarkMode ? 'text-blue-300' : 'text-gray-600'}`}>(já salvo)</span>}
-																{isFile && (
-																	<button
-																		onClick={() => setSubmenuData({ ...submenuData, arquivos: submenuData.arquivos.filter((_, index) => index !== i) })}
-																		className={`${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-800'} transition-colors ml-1`}
-																		title="Remover arquivo"
-																		disabled={salvandoSubmenu}
-																	>
-																		<X className="w-3 h-3" />
-																	</button>
+																	<div className="flex items-center gap-2">
+																		<FileText className={`w-4 h-4 flex-shrink-0 ${isFile ? (isDarkMode ? 'text-green-400' : 'text-green-700') : (isDarkMode ? 'text-blue-400' : 'text-gray-700')}`} />
+																		<span className={`text-xs truncate flex-1 ${theme.text.secondary}`}>{nome}</span>
+																		{!isFile && <span className={`text-[10px] flex-shrink-0 ${isDarkMode ? 'text-blue-300' : 'text-gray-600'}`}>(salvo)</span>}
+																		<button
+																			onClick={() => setSubmenuData({ ...submenuData, arquivos: submenuData.arquivos.filter((_, index) => index !== i) })}
+																			className={`flex-shrink-0 p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+																			title="Remover arquivo"
+																			disabled={salvandoSubmenu}
+																		>
+																			<X className="w-4 h-4" />
+																		</button>
+																	</div>
 																)}
 															</div>
 														);

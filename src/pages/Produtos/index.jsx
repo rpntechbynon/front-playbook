@@ -435,16 +435,62 @@ export default function Produtos() {
 										<ImageIcon className="w-4 h-4" />
 										URL da Imagem
 									</label>
-									<input
-										type="url"
-										value={formData.imagem}
-										onChange={(e) => handleInputChange('imagem', e.target.value)}
-										placeholder="https://exemplo.com/imagem.jpg"
-										className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 ${theme.bg.input} ${theme.border.input} ${theme.text.primary} ${theme.placeholder.input} ${
-											isDarkMode ? 'focus:border-blue-500 focus:ring-blue-500/50' : 'focus:border-gray-600 focus:ring-gray-400'
-										} transition-all`}
+							<div className="flex gap-2">
+								<input
+									type="url"
+									value={formData.imagem}
+									onChange={(e) => handleInputChange('imagem', e.target.value)}
+									placeholder="https://exemplo.com/imagem.jpg"
+									className={`flex-1 px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 ${theme.bg.input} ${theme.border.input} ${theme.text.primary} ${theme.placeholder.input} ${
+										isDarkMode ? 'focus:border-blue-500 focus:ring-blue-500/50' : 'focus:border-gray-600 focus:ring-gray-400'
+									} transition-all`}
+									disabled={salvando}
+								/>
+								{formData.imagem && (
+									<button
+										type="button"
+										onClick={() => handleInputChange('imagem', '')}
 										disabled={salvando}
-									/>
+										className={`px-4 py-3 rounded-xl font-semibold transition-all border ${
+											isDarkMode 
+												? 'bg-red-600/20 border-red-500/30 text-red-400 hover:bg-red-600/30' 
+												: 'bg-red-100 border-red-300 text-red-700 hover:bg-red-200'
+										}`}
+										title="Remover imagem"
+									>
+										<X className="w-5 h-5" />
+									</button>
+								)}
+							</div>
+							
+							{/* Preview da Imagem */}
+							{formData.imagem && (
+								<div className={`mt-3 p-3 border rounded-xl ${theme.bg.input} ${theme.border.input}`}>
+									<p className={`text-xs font-semibold mb-2 ${theme.text.secondary}`}>Preview:</p>
+									<div className="relative w-full max-w-xs">
+										<img
+											src={formData.imagem}
+											alt="Preview"
+											className="w-full h-auto rounded-lg border-2 border-dashed"
+											style={{ borderColor: isDarkMode ? 'rgba(148, 163, 184, 0.3)' : 'rgba(209, 213, 219, 1)' }}
+											onError={(e) => {
+												e.target.style.display = 'none';
+												e.target.nextSibling.style.display = 'flex';
+											}}
+										/>
+										<div
+											className={`hidden items-center justify-center p-4 rounded-lg border-2 border-dashed ${isDarkMode ? 'bg-red-900/20 text-red-400' : 'bg-red-50 text-red-600'}`}
+											style={{ borderColor: isDarkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(252, 165, 165, 1)' }}
+										>
+											<div className="text-center">
+												<AlertCircle className="w-8 h-8 mx-auto mb-2" />
+												<p className="text-xs font-semibold">Erro ao carregar imagem</p>
+												<p className="text-xs mt-1 opacity-75">Verifique a URL</p>
+											</div>
+										</div>
+									</div>
+								</div>
+							)}
 								</div>
 
 								{/* Ativo */}
