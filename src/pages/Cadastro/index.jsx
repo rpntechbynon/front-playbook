@@ -128,9 +128,6 @@ export default function Cadastro() {
 	};
 
 	const handleEditEtapa = (trilhaId, etapa) => {
-		console.log('Editando etapa:', etapa);
-		console.log('Anexos da etapa:', etapa.anexos);
-		
 		// Converter goTo string para array de números
 		const goToArray = etapa.goTo ? etapa.goTo.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
 		
@@ -141,16 +138,13 @@ export default function Cadastro() {
 			ordem: p.ordem || index
 		})) : [];
 		
-		const arquivosCarregados = etapa.anexos || [];
-		console.log('Arquivos carregados no estado:', arquivosCarregados);
-		
 		setNovaEtapa({ 
 			trilhaId, 
 			parentId: etapa.parentId || null, 
 			titulo: etapa.titulo, 
 			descricao: etapa.descricao,
 			ordem: etapa.ordem !== null && etapa.ordem !== undefined ? etapa.ordem : null,
-			arquivos: arquivosCarregados,
+			arquivos: etapa.anexos || [],
 			goTo: goToArray,
 			produtos: produtosArray,
 			isEdit: true,
@@ -542,6 +536,33 @@ export default function Cadastro() {
 		}
 	};
 
+	// Deletar documento do formulário de edição de trilha
+	const handleDeleteDocumentoTrilhaForm = async (documentoId, nomeDocumento) => {
+		if (!confirm(`Deseja realmente excluir o documento "${nomeDocumento}"?`)) return;
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/decisoes/${trilhaEditId}/documentos/${documentoId}`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				throw new Error('Erro ao excluir documento da trilha');
+			}
+
+			// Remover da lista local
+			setArquivos(arquivos.filter(doc => doc.id !== documentoId));
+			
+			setMensagemSucesso("Documento excluído com sucesso!");
+			setTimeout(() => setMensagemSucesso(""), 3000);
+			
+			// Recarregar trilhas em background
+			await carregarTrilhas();
+		} catch (error) {
+			console.error('Erro ao excluir documento:', error);
+			alert('Erro ao excluir documento. Tente novamente.');
+		}
+	};
+
 	const handleEditTrilha = (trilhaId) => {
 		const trilha = trilhas.find(t => t.id === trilhaId);
 		if (!trilha) return;
@@ -564,8 +585,9 @@ export default function Cadastro() {
 			const goToArray = trilha.go_to ? trilha.go_to.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
 			setGoToSelecionados(goToArray);
 			
-			// Não carregar arquivos existentes para edição, apenas novos
-			setArquivos([]);
+			// Carregar documentos existentes
+			console.log('Documentos da trilha:', trilha.documentos);
+			setArquivos(trilha.documentos || []);
 			
 			// Mostrar formulário novamente
 			setShowForm(true);
@@ -759,6 +781,7 @@ export default function Cadastro() {
 						decisoesDisponiveis={decisoesDisponiveis}
 						loadingDecisoes={loadingDecisoes}
 						errosArquivos={errosArquivos}
+						onDeleteDocumento={handleDeleteDocumentoTrilhaForm}
 						onSave={salvarTrilha}
 						onCancel={() => {
 							setShowForm(false);
@@ -1250,147 +1273,10 @@ export default function Cadastro() {
 										</div>
 									)}
 
-									{/* Seção Destacada: Documentos Existentes (só para nível pai em edição) */}
-									{(() => {
-										const documentosExistentes = novaEtapa.arquivos.filter(a => !(a instanceof File));
-										console.log('Renderizando documentos - isEdit:', novaEtapa.isEdit, 'parentId:', novaEtapa.parentId, 'docs:', documentosExistentes);
-										
-										return novaEtapa.isEdit && !novaEtapa.parentId && documentosExistentes.length > 0 && (
-											<div className={`p-4 rounded-xl border-2 ${isDarkMode ? 'bg-gradient-to-br from-blue-900/30 to-purple-900/20 border-blue-500/50' : 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-400'} shadow-lg`}>
-												<div className="flex items-center gap-2 mb-4">
-													<div className={`p-2 rounded-lg ${isDarkMode ? 'bg-blue-600/30' : 'bg-blue-200'}`}>
-														<FileText className={`w-5 h-5 ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`} />
-													</div>
-													<div className="flex-1">
-													<h4 className={`font-bold text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
-														📁 Documentos da Decisão Principal
-													</h4>
-													<p className={`text-xs ${isDarkMode ? 'text-blue-300/70' : 'text-blue-600/70'}`}>
-														{novaEtapa.arquivos.filter(a => !(a instanceof File)).length} documento(s) anexado(s)
-													</p>
-												</div>
-											</div>
-											<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-												{novaEtapa.arquivos
-													.filter(a => !(a instanceof File))
-													.map((arquivo, idx) => {
-														const isImage = arquivo.tipo?.startsWith('image/') || arquivo.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-														
-														return (
-															<div key={arquivo.id || idx} className={`relative border-2 rounded-xl p-3 transition-all ${isDarkMode ? 'bg-slate-800/80 border-slate-600 hover:border-blue-400 hover:shadow-lg hover:shadow-blue-500/20' : 'bg-white border-gray-300 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-300/30'}`}>
-																{isImage && arquivo.url_presignada ? (
-																	<div className="space-y-3">
-																		<div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black/5 group">
-																			<img
-																				src={arquivo.url_presignada}
-																				alt={arquivo.nome}
-																				className="w-full h-full object-cover transition-transform group-hover:scale-105"
-																				onError={(e) => {
-																					console.error('Erro ao carregar imagem:', arquivo.nome);
-																					e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999">Erro</text></svg>';
-																				}}
-																			/>
-																		</div>
-																		<div className="space-y-2">
-																			<div className="flex items-center gap-2">
-																				<ImageIcon className={`w-4 h-4 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-																				<span className={`text-xs font-medium truncate ${theme.text.primary}`} title={arquivo.nome}>
-																					{arquivo.nome}
-																				</span>
-																			</div>
-																			{arquivo.created_at && (
-																				<p className={`text-[10px] ${theme.text.tertiary}`}>
-																					📅 {new Date(arquivo.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-																				</p>
-																			)}
-																			<div className="flex gap-2 pt-1">
-																				<a
-																					href={arquivo.url_presignada}
-																					target="_blank"
-																					rel="noopener noreferrer"
-																					className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold text-center transition-all ${isDarkMode ? 'bg-blue-600/30 text-blue-300 hover:bg-blue-600/50' : 'bg-blue-500 text-white hover:bg-blue-600'} flex items-center justify-center gap-1`}
-																				>
-																					<Maximize2 className="w-3 h-3" />
-																					Abrir
-																				</a>
-																				<button
-																					type="button"
-																					onClick={async (e) => {
-																						e.preventDefault();
-																						e.stopPropagation();
-																						if (confirm(`Deseja realmente excluir "${arquivo.nome}"?`)) {
-																							await handleDeleteDocumentoEtapaForm(arquivo.id, arquivo.nome);
-																						}
-																					}}
-																					className={`px-3 py-2 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/30 text-red-300 hover:bg-red-600/50' : 'bg-red-500 text-white hover:bg-red-600'}`}
-																					title="Excluir documento"
-																					disabled={salvandoEtapa}
-																				>
-																					<Trash2 className="w-3 h-3" />
-																				</button>
-																			</div>
-																		</div>
-																	</div>
-																) : (
-																	<div className="space-y-3">
-																		<div className={`w-full p-8 rounded-lg ${isDarkMode ? 'bg-slate-700/50' : 'bg-gray-100'} flex items-center justify-center`}>
-																			<FileText className={`w-12 h-12 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-																		</div>
-																		<div className="space-y-2">
-																			<div className="flex items-center gap-2">
-																				<FileText className={`w-4 h-4 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-																				<span className={`text-xs font-medium truncate flex-1 ${theme.text.primary}`} title={arquivo.nome}>
-																					{arquivo.nome}
-																				</span>
-																			</div>
-																			{arquivo.created_at && (
-																				<p className={`text-[10px] ${theme.text.tertiary}`}>
-																					📅 {new Date(arquivo.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-																				</p>
-																			)}
-																			<div className="flex gap-2 pt-1">
-																				{arquivo.url_presignada && (
-																					<a
-																						href={arquivo.url_presignada}
-																						target="_blank"
-																						rel="noopener noreferrer"
-																						className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold text-center transition-all ${isDarkMode ? 'bg-blue-600/30 text-blue-300 hover:bg-blue-600/50' : 'bg-blue-500 text-white hover:bg-blue-600'} flex items-center justify-center gap-1`}
-																					>
-																						<Maximize2 className="w-3 h-3" />
-																						Baixar
-																					</a>
-																				)}
-																				<button
-																					type="button"
-																					onClick={async (e) => {
-																						e.preventDefault();
-																						e.stopPropagation();
-																						if (confirm(`Deseja realmente excluir "${arquivo.nome}"?`)) {
-																							await handleDeleteDocumentoEtapaForm(arquivo.id, arquivo.nome);
-																						}
-																					}}
-																					className={`px-3 py-2 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/30 text-red-300 hover:bg-red-600/50' : 'bg-red-500 text-white hover:bg-red-600'}`}
-																					title="Excluir documento"
-																					disabled={salvandoEtapa}
-																				>
-																					<Trash2 className="w-3 h-3" />
-																				</button>
-																			</div>
-																		</div>
-																	</div>
-																)}
-															</div>
-														);
-													})}
-											</div>
-										</div>
-										);
-									})()}
-
 									<div>
 										<label className={`block font-semibold mb-2 text-sm ${theme.text.secondary} flex items-center gap-2`}>
 											<Upload className="w-4 h-4" />
-											{novaEtapa.isEdit && !novaEtapa.parentId && novaEtapa.arquivos.filter(a => !(a instanceof File)).length > 0 ? 'Adicionar Novos Anexos' : 'Fotos/Anexos'}
+											Fotos/Anexos
 										</label>
 										<input
 											type="file"
@@ -1426,46 +1312,29 @@ export default function Cadastro() {
 											</div>
 										)}
 										
-										{(() => {
-											// Determinar quais arquivos mostrar
-											const arquivosParaMostrar = (novaEtapa.isEdit && !novaEtapa.parentId) 
-												? novaEtapa.arquivos.filter(a => a instanceof File)  // Apenas novos para nível pai
-												: novaEtapa.arquivos;  // Todos para outros casos
-											
-											return arquivosParaMostrar.length > 0 && (
-												<div className="mt-3 space-y-3">
-													<p className={`text-xs ${theme.text.tertiary} font-medium`}>
-														{(novaEtapa.isEdit && !novaEtapa.parentId) ? (
-															<>
-																📤 Novos arquivos para enviar:
-																<span className={`ml-2 ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>
-																	({arquivosParaMostrar.length})
-																</span>
-															</>
-														) : (
-															<>
-																{novaEtapa.arquivos.length} arquivo(s):
-																{novaEtapa.arquivos.filter(a => a instanceof File).length > 0 && (
-																	<span className={`ml-2 ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>
-																		({novaEtapa.arquivos.filter(a => a instanceof File).length} novo(s))
-																	</span>
-																)}
-																{novaEtapa.arquivos.filter(a => !(a instanceof File)).length > 0 && (
-																	<span className={`ml-2 ${isDarkMode ? 'text-blue-400' : 'text-gray-700'}`}>
-																		({novaEtapa.arquivos.filter(a => !(a instanceof File)).length} existente(s))
-																	</span>
-																)}
-															</>
-														)}
-													</p>
-													<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-														{arquivosParaMostrar.map((arquivo, i) => {
-															const isFile = arquivo instanceof File;
-															const isImage = isFile 
-																? arquivo.type?.startsWith('image/') 
-																: arquivo.tipo?.startsWith('image/') || arquivo.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-															const nome = isFile ? arquivo.name : arquivo.nome;
-															const imageUrl = isFile && isImage ? URL.createObjectURL(arquivo) : (isImage && arquivo.url_presignada) || null;
+										{novaEtapa.arquivos.length > 0 && (
+											<div className="mt-3 space-y-3">
+												<p className={`text-xs ${theme.text.tertiary} font-medium`}>
+													{novaEtapa.arquivos.length} arquivo(s):
+													{novaEtapa.arquivos.filter(a => a instanceof File).length > 0 && (
+														<span className={`ml-2 ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>
+															({novaEtapa.arquivos.filter(a => a instanceof File).length} novo(s))
+														</span>
+													)}
+													{novaEtapa.arquivos.filter(a => !(a instanceof File)).length > 0 && (
+														<span className={`ml-2 ${isDarkMode ? 'text-blue-400' : 'text-gray-700'}`}>
+															({novaEtapa.arquivos.filter(a => !(a instanceof File)).length} existente(s))
+														</span>
+													)}
+												</p>
+												<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+													{novaEtapa.arquivos.map((arquivo, i) => {
+														const isFile = arquivo instanceof File;
+														const isImage = isFile 
+															? arquivo.type?.startsWith('image/') 
+															: arquivo.tipo?.startsWith('image/') || arquivo.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+														const nome = isFile ? arquivo.name : arquivo.nome;
+														const imageUrl = isFile && isImage ? URL.createObjectURL(arquivo) : (isImage && arquivo.url_presignada) || null;
 														
 														return (
 															<div key={i} className={`relative border rounded-xl p-3 transition-all ${isFile ? (isDarkMode ? 'bg-green-900/20 border-green-600/50 hover:border-green-500' : 'bg-green-50 border-green-300 hover:border-green-400') : (isDarkMode ? 'bg-blue-900/20 border-blue-600/50 hover:border-blue-500' : 'bg-gray-100 border-gray-300 hover:border-gray-400')}`}>
@@ -1537,8 +1406,7 @@ export default function Cadastro() {
 													})}
 												</div>
 											</div>
-											);
-										})()}
+										)}
 									</div>
 								</div>
 

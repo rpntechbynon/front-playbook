@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Upload, X, Image, FileText, CheckSquare, Square, AlertCircle, Hash } from "lucide-react";
+import { Plus, Upload, X, Image, FileText, CheckSquare, Square, AlertCircle, Hash, Maximize2, Trash2 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
 export default function TrilhaForm({ 
@@ -18,9 +18,15 @@ export default function TrilhaForm({
 	onSave, 
 	onCancel,
 	isEditing = false,
-	errosArquivos = []
+	errosArquivos = [],
+	onDeleteDocumento
 }) {
 	const { theme, isDarkMode } = useTheme();
+	
+	// Debug: log dos arquivos recebidos
+	console.log('TrilhaForm - arquivos recebidos:', arquivos);
+	console.log('TrilhaForm - isEditing:', isEditing);
+	console.log('TrilhaForm - documentos existentes:', arquivos.filter(a => !(a instanceof File)));
 	
 	const toggleDecisao = (id) => {
 		if (goToSelecionados.includes(id)) {
@@ -155,10 +161,139 @@ export default function TrilhaForm({
 				)}
 			</div>
 
+			{/* Seção Destacada: Documentos Existentes */}
+			{isEditing && arquivos.filter(a => !(a instanceof File)).length > 0 && (
+				<div className={`mb-6 p-4 rounded-xl border-2 ${isDarkMode ? 'bg-gradient-to-br from-blue-900/30 to-purple-900/20 border-blue-500/50' : 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-400'} shadow-lg`}>
+					<div className="flex items-center gap-2 mb-4">
+						<div className={`p-2 rounded-lg ${isDarkMode ? 'bg-blue-600/30' : 'bg-blue-200'}`}>
+							<FileText className={`w-5 h-5 ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`} />
+						</div>
+						<div className="flex-1">
+							<h4 className={`font-bold text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+								📁 Documentos da Trilha
+							</h4>
+							<p className={`text-xs ${isDarkMode ? 'text-blue-300/70' : 'text-blue-600/70'}`}>
+								{arquivos.filter(a => !(a instanceof File)).length} documento(s) anexado(s)
+							</p>
+						</div>
+					</div>
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+						{arquivos
+							.filter(a => !(a instanceof File))
+							.map((doc, idx) => {
+								const isImage = doc.tipo?.startsWith('image/') || doc.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+								const imageUrl = isImage && (doc.url || doc.url_presignada);
+								
+								return (
+									<div key={doc.id || idx} className={`relative border-2 rounded-xl p-3 transition-all ${isDarkMode ? 'bg-slate-800/80 border-slate-600 hover:border-blue-400 hover:shadow-lg hover:shadow-blue-500/20' : 'bg-white border-gray-300 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-300/30'}`}>
+										{isImage && imageUrl ? (
+											<div className="space-y-3">
+												<div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black/5 group">
+													<img
+														src={imageUrl}
+														alt={doc.nome}
+														className="w-full h-full object-cover transition-transform group-hover:scale-105"
+														onError={(e) => {
+															console.error('Erro ao carregar imagem:', doc.nome, imageUrl);
+															e.target.style.display = 'none';
+														}}
+													/>
+												</div>
+												<div className="space-y-2">
+													<div className="flex items-center gap-2">
+														<Image className={`w-4 h-4 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+														<span className={`text-xs font-medium truncate ${theme.text.primary}`} title={doc.nome}>
+															{doc.nome}
+														</span>
+													</div>
+													{doc.created_at && (
+														<p className={`text-[10px] ${theme.text.tertiary}`}>
+															📅 {new Date(doc.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+														</p>
+													)}
+													<div className="flex gap-2 pt-1">
+														<a
+															href={imageUrl}
+															target="_blank"
+															rel="noopener noreferrer"
+															className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold text-center transition-all ${isDarkMode ? 'bg-blue-600/30 text-blue-300 hover:bg-blue-600/50' : 'bg-blue-500 text-white hover:bg-blue-600'} flex items-center justify-center gap-1`}
+														>
+															<Maximize2 className="w-3 h-3" />
+															Abrir
+														</a>
+														{onDeleteDocumento && (
+															<button
+																type="button"
+																onClick={(e) => {
+																	e.preventDefault();
+																	onDeleteDocumento(doc.id, doc.nome);
+																}}
+																className={`px-3 py-2 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/30 text-red-300 hover:bg-red-600/50' : 'bg-red-500 text-white hover:bg-red-600'}`}
+																title="Excluir documento"
+															>
+																<Trash2 className="w-3 h-3" />
+															</button>
+														)}
+													</div>
+												</div>
+											</div>
+										) : (
+											<div className="space-y-3">
+												<div className={`w-full p-8 rounded-lg ${isDarkMode ? 'bg-slate-700/50' : 'bg-gray-100'} flex items-center justify-center`}>
+													<FileText className={`w-12 h-12 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+												</div>
+												<div className="space-y-2">
+													<div className="flex items-center gap-2">
+														<FileText className={`w-4 h-4 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+														<span className={`text-xs font-medium truncate flex-1 ${theme.text.primary}`} title={doc.nome}>
+															{doc.nome}
+														</span>
+													</div>
+													{doc.created_at && (
+														<p className={`text-[10px] ${theme.text.tertiary}`}>
+															📅 {new Date(doc.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+														</p>
+													)}
+													<div className="flex gap-2 pt-1">
+														{(doc.url || doc.url_presignada) && (
+															<a
+																href={doc.url || doc.url_presignada}
+																target="_blank"
+																rel="noopener noreferrer"
+																className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold text-center transition-all ${isDarkMode ? 'bg-blue-600/30 text-blue-300 hover:bg-blue-600/50' : 'bg-blue-500 text-white hover:bg-blue-600'} flex items-center justify-center gap-1`}
+															>
+																<Maximize2 className="w-3 h-3" />
+																Baixar
+															</a>
+														)}
+														{onDeleteDocumento && (
+															<button
+																type="button"
+																onClick={(e) => {
+																	e.preventDefault();
+																	onDeleteDocumento(doc.id, doc.nome);
+																}}
+																className={`px-3 py-2 rounded-lg transition-all ${isDarkMode ? 'bg-red-600/30 text-red-300 hover:bg-red-600/50' : 'bg-red-500 text-white hover:bg-red-600'}`}
+																title="Excluir documento"
+															>
+																<Trash2 className="w-3 h-3" />
+															</button>
+														)}
+													</div>
+												</div>
+											</div>
+										)}
+									</div>
+								);
+							})}
+					</div>
+				</div>
+			)}
+
 			<div className="mb-6">
 				<label className={`block font-semibold mb-2 flex items-center gap-2 ${theme.text.secondary}`}>
 					<Upload className="w-4 h-4" />
-					Anexos (opcional)
+					{isEditing && arquivos.filter(a => !(a instanceof File)).length > 0 ? 'Adicionar Novos Anexos' : 'Anexos (opcional)'}
 				</label>
 				<input
 					type="file"
@@ -189,13 +324,28 @@ export default function TrilhaForm({
 				</div>
 			)}
 			
-			{arquivos.length > 0 && (
-				<div className="mt-4 space-y-3">
-					<p className={`text-xs font-medium ${theme.text.tertiary}`}>
-						{arquivos.length} arquivo(s) selecionado(s)
-					</p>
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-						{arquivos.map((arquivo, i) => {
+			{(() => {
+				// Determinar quais arquivos mostrar
+				const arquivosNovos = isEditing && arquivos.filter(a => !(a instanceof File)).length > 0
+					? arquivos.filter(a => a instanceof File)  // Apenas novos se já tem documentos
+					: arquivos;  // Todos para outros casos
+				
+				return arquivosNovos.length > 0 && (
+					<div className="mt-4 space-y-3">
+						<p className={`text-xs font-medium ${theme.text.tertiary}`}>
+							{isEditing && arquivos.filter(a => !(a instanceof File)).length > 0 ? (
+								<>
+									📤 Novos arquivos para enviar:
+									<span className={`ml-2 ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>
+										({arquivosNovos.length})
+									</span>
+								</>
+							) : (
+								`${arquivosNovos.length} arquivo(s) selecionado(s)`
+							)}
+						</p>
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+							{arquivosNovos.map((arquivo, i) => {
 							const isImage = arquivo.type?.startsWith('image/');
 							const imageUrl = isImage ? URL.createObjectURL(arquivo) : null;
 							
@@ -243,7 +393,8 @@ export default function TrilhaForm({
 						})}
 					</div>
 				</div>
-			)}
+				);
+			})()}
 		</div>
 
 			<div className="flex gap-3">
