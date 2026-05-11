@@ -521,7 +521,7 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 8px;
         }

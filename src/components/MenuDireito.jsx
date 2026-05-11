@@ -3,7 +3,7 @@ import { Link, MapPin, ExternalLink, ChevronRight, Layers, Navigation, ArrowRigh
 import TrilhaService from "../services/TrilhaService";
 import { useTheme } from "../contexts/ThemeContext";
 
-export default function MenuDireito({ selectedTrilha, onSelectDestination, isMinimized, onToggleMinimize, onSelectSubmenuDocument }) {
+export default function MenuDireito({ selectedTrilha, onSelectDestination, isMinimized, onToggleMinimize, onSelectSubmenuDocument, onSelectSubmenuImages }) {
   const { theme, isDarkMode } = useTheme();
   const [destinations, setDestinations] = useState([]);
   const [allTrilhas, setAllTrilhas] = useState([]);
@@ -234,10 +234,10 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
               ) || [];
               const hasImages = imagensSubmenu.length > 0;
               
-              // Função para clicar no card e exibir a primeira imagem
+              // Função para clicar no card e exibir as imagens
               const handleSubmenuClick = () => {
-                if (hasImages && onSelectSubmenuDocument) {
-                  onSelectSubmenuDocument(imagensSubmenu[0]);
+                if (hasImages && onSelectSubmenuImages) {
+                  onSelectSubmenuImages(imagensSubmenu, 0);
                 }
               };
               
