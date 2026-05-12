@@ -75,9 +75,18 @@ export default function Trilha() {
   };
 
   const handleSelectSubmenuImages = (images, startIndex = 0) => {
-    setIsImageLoading(true); // Ativar loading ao trocar para submenu
+    // Verificar se são as mesmas imagens para evitar loading desnecessário
+    const areSameImages = selectedSubmenuImages.length === images.length && 
+                          selectedSubmenuImages.length > 0 &&
+                          selectedSubmenuImages[0]?.id === images[0]?.id;
+    
     setSelectedSubmenuImages(images);
     setCurrentSubmenuImageIndex(startIndex);
+    
+    // Só ativar loading se forem imagens diferentes
+    if (!areSameImages) {
+      setIsImageLoading(true);
+    }
   };
 
   // Coletar apenas documentos da etapa principal (sem submenus)
