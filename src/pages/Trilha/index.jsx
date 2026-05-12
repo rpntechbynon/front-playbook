@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
+/* eslint-disable react-hooks/preserve-manual-memoization */
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import MenuSuperior from "../MenuSuperior";
 import MenuLateral from "../../components/Menulateral";
 import MenuDireito from "../../components/MenuDireito";
@@ -11,7 +12,6 @@ export default function Trilha() {
   const [selectedTrilha, setSelectedTrilha] = useState(null);
   const [isMenuDireitoMinimized, setIsMenuDireitoMinimized] = useState(false);
   const [selectedAttachmentIndex, setSelectedAttachmentIndex] = useState(0);
-  const [selectedSubmenuDocument, setSelectedSubmenuDocument] = useState(null);
   const [selectedSubmenuImages, setSelectedSubmenuImages] = useState([]);
   const [currentSubmenuImageIndex, setCurrentSubmenuImageIndex] = useState(0);
   const [isImageLoading, setIsImageLoading] = useState(false);
@@ -20,12 +20,19 @@ export default function Trilha() {
   const touchEndX = useRef(0);
 
   const handleSelectTrilha = (trilha) => {
+    // Verificar se é a mesma trilha para evitar loading desnecessário
+    const isSameTrilha = selectedTrilha?.id === trilha?.id;
+    
     setSelectedTrilha(trilha);
     setSelectedAttachmentIndex(0); // Resetar para o primeiro anexo
-    setSelectedSubmenuDocument(null); // Limpar documento selecionado do submenu
     setSelectedSubmenuImages([]); // Limpar imagens do submenu
     setCurrentSubmenuImageIndex(0); // Resetar índice
-    setIsImageLoading(true); // Ativar loading
+    
+    // Só ativar loading se for uma trilha diferente
+    if (!isSameTrilha) {
+      setIsImageLoading(true);
+    }
+    
     // Expandir o menu direito se houver go_to
     if (trilha?.go_to) {
       setIsMenuDireitoMinimized(false);
@@ -33,12 +40,19 @@ export default function Trilha() {
   };
 
   const handleSelectDestination = (destination) => {
+    // Verificar se é o mesmo destino para evitar loading desnecessário
+    const isSameDestination = selectedTrilha?.id === destination?.id;
+    
     // Quando selecionar um destino no menu direito, atualiza a trilha selecionada
     setSelectedTrilha(destination);
-    setSelectedSubmenuDocument(null); // Limpar documento selecionado do submenu
     setSelectedSubmenuImages([]); // Limpar imagens do submenu
     setCurrentSubmenuImageIndex(0); // Resetar índice
-    setIsImageLoading(true); // Ativar loading
+    
+    // Só ativar loading se for um destino diferente
+    if (!isSameDestination) {
+      setIsImageLoading(true);
+    }
+    
     // Seleciona a trilha no menu lateral
     if (menuLateralRef.current) {
       menuLateralRef.current.selectTrilha(destination.id);
@@ -46,7 +60,6 @@ export default function Trilha() {
   };
 
   const handleSelectSubmenuDocument = (document) => {
-    setSelectedSubmenuDocument(document);
     // Encontrar o índice do documento nos anexos visualizáveis (incluindo submenus para navegação)
     const allDocs = getAllDocumentsIncludingSubmenus();
     const viewableDocs = allDocs.filter(doc => 
@@ -65,11 +78,10 @@ export default function Trilha() {
     setIsImageLoading(true); // Ativar loading ao trocar para submenu
     setSelectedSubmenuImages(images);
     setCurrentSubmenuImageIndex(startIndex);
-    setSelectedSubmenuDocument(images[startIndex]);
   };
 
   // Coletar apenas documentos da etapa principal (sem submenus)
-  const getAllDocuments = () => {
+  const getAllDocuments = useCallback(() => {
     if (!selectedTrilha) return [];
     
     let allDocs = [];
@@ -80,10 +92,10 @@ export default function Trilha() {
     }
     
     return allDocs;
-  };
+  }, [selectedTrilha]);
   
   // Função auxiliar para coletar documentos incluindo submenus (usado para navegação do visualizador)
-  const getAllDocumentsIncludingSubmenus = () => {
+  const getAllDocumentsIncludingSubmenus = useCallback(() => {
     if (!selectedTrilha) return [];
     
     let allDocs = [];
@@ -103,28 +115,27 @@ export default function Trilha() {
     }
     
     return allDocs;
-  };
+  }, [selectedTrilha]);
 
   // Verificar se tem documentos e separar por tipo
   // Para a lista: apenas documentos da etapa principal
   const allDocuments = getAllDocuments();
   const hasAttachments = allDocuments.length > 0;
-  const imageAttachments = hasAttachments 
-    ? allDocuments.filter(doc => 
-        doc.tipo?.startsWith('image/') || doc.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-      )
-    : [];
-  const pdfAttachments = hasAttachments
-    ? allDocuments.filter(doc => 
-        doc.tipo === 'application/pdf' || doc.nome?.match(/\.pdf$/i)
-      )
-    : [];
-  const otherAttachments = hasAttachments
-    ? allDocuments.filter(doc => 
-        !(doc.tipo?.startsWith('image/') || doc.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i)) &&
-        !(doc.tipo === 'application/pdf' || doc.nome?.match(/\.pdf$/i))
-      )
-    : [];
+  const imageAttachments = useMemo(() => 
+    hasAttachments 
+      ? allDocuments.filter(doc => 
+          doc.tipo?.startsWith('image/') || doc.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+        )
+      : []
+  , [allDocuments, hasAttachments]);
+  const otherAttachments = useMemo(() => 
+    hasAttachments
+      ? allDocuments.filter(doc => 
+          !(doc.tipo?.startsWith('image/') || doc.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i)) &&
+          !(doc.tipo === 'application/pdf' || doc.nome?.match(/\.pdf$/i))
+        )
+      : []
+  , [allDocuments, hasAttachments]);
   
   // Lógica simplificada: verificar se estamos em modo submenu ou normal
   const isSubmenuMode = selectedSubmenuImages.length > 0;
@@ -133,16 +144,6 @@ export default function Trilha() {
   const imagesToDisplay = isSubmenuMode ? selectedSubmenuImages : imageAttachments;
   const currentImageIndex = isSubmenuMode ? currentSubmenuImageIndex : selectedAttachmentIndex;
   const currentImage = imagesToDisplay[currentImageIndex];
-  
-  // Para visualizador de PDFs e galeria de miniaturas (etapa principal)
-  const allDocumentsForViewer = getAllDocumentsIncludingSubmenus();
-  const viewableAttachments = allDocumentsForViewer.filter(doc => 
-    doc.tipo?.startsWith('image/') || 
-    doc.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ||
-    doc.tipo === 'application/pdf' || 
-    doc.nome?.match(/\.pdf$/i)
-  );
-  const currentAttachment = viewableAttachments[selectedAttachmentIndex];
   
   // Obter URL do anexo (usar url_presignada se disponível)
   const getAttachmentUrl = (documento) => {
@@ -166,46 +167,43 @@ export default function Trilha() {
   };
 
   // Funções de navegação para imagens de submenu
-  const nextSubmenuImage = () => {
+  const nextSubmenuImage = useCallback(() => {
     if (selectedSubmenuImages.length > 0) {
       setIsImageLoading(true); // Ativar loading
       const newIndex = (currentSubmenuImageIndex + 1) % selectedSubmenuImages.length;
       setCurrentSubmenuImageIndex(newIndex);
-      setSelectedSubmenuDocument(selectedSubmenuImages[newIndex]);
     }
-  };
+  }, [selectedSubmenuImages.length, currentSubmenuImageIndex]);
 
-  const prevSubmenuImage = () => {
+  const prevSubmenuImage = useCallback(() => {
     if (selectedSubmenuImages.length > 0) {
       setIsImageLoading(true); // Ativar loading
       const newIndex = (currentSubmenuImageIndex - 1 + selectedSubmenuImages.length) % selectedSubmenuImages.length;
       setCurrentSubmenuImageIndex(newIndex);
-      setSelectedSubmenuDocument(selectedSubmenuImages[newIndex]);
     }
-  };
+  }, [selectedSubmenuImages.length, currentSubmenuImageIndex]);
 
-  const selectSubmenuImage = (index) => {
+  const selectSubmenuImage = useCallback((index) => {
     setIsImageLoading(true); // Ativar loading
     setCurrentSubmenuImageIndex(index);
-    setSelectedSubmenuDocument(selectedSubmenuImages[index]);
-  };
+  }, []);
 
   // Funções de navegação para imagens normais (etapa principal)
-  const nextImage = () => {
+  const nextImage = useCallback(() => {
     if (imageAttachments.length > 0) {
       setIsImageLoading(true); // Ativar loading
       const newIndex = (selectedAttachmentIndex + 1) % imageAttachments.length;
       setSelectedAttachmentIndex(newIndex);
     }
-  };
+  }, [imageAttachments.length, selectedAttachmentIndex]);
 
-  const prevImage = () => {
+  const prevImage = useCallback(() => {
     if (imageAttachments.length > 0) {
       setIsImageLoading(true); // Ativar loading
       const newIndex = (selectedAttachmentIndex - 1 + imageAttachments.length) % imageAttachments.length;
       setSelectedAttachmentIndex(newIndex);
     }
-  };
+  }, [imageAttachments.length, selectedAttachmentIndex]);
 
   // Handlers para gestos de swipe
   const handleTouchStart = (e) => {
@@ -264,7 +262,7 @@ export default function Trilha() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSubmenuMode, selectedSubmenuImages, currentSubmenuImageIndex, selectedAttachmentIndex, imageAttachments.length]);
+  }, [isSubmenuMode, selectedSubmenuImages.length, prevSubmenuImage, nextSubmenuImage, imageAttachments.length, prevImage, nextImage]);
 
   // Preload das imagens adjacentes para melhor performance
   useEffect(() => {
@@ -471,14 +469,6 @@ export default function Trilha() {
                       </div>
                     )}
                   </>
-                ) : viewableAttachments.length > 0 ? (
-                  <div className="h-full flex items-center justify-center p-8">
-                    <div className={`max-w-2xl w-full text-center border rounded-2xl p-8 ${isDarkMode ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-gray-200'}`}>
-                      <ImageIcon className={`w-16 h-16 mx-auto mb-4 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`} />
-                      <p className={`text-lg font-semibold mb-2 ${theme.text.primary}`}>Sem imagens para exibir</p>
-                      <p className={theme.text.tertiary}>Esta trilha possui apenas documentos PDF ou outros tipos de arquivo</p>
-                    </div>
-                  </div>
                 ) : otherAttachments.length > 0 ? (
                   <div className="h-full overflow-y-auto p-6">
                     <h3 className={`text-lg font-bold mb-4 ${theme.text.primary}`}>Anexos disponíveis</h3>
