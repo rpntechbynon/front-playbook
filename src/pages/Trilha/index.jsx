@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/preserve-manual-memoization */
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import MenuSuperior from "../MenuSuperior";
 import MenuLateral from "../../components/Menulateral";

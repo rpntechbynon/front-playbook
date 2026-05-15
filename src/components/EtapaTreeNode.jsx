@@ -1,9 +1,236 @@
 import React from "react";
-import { ChevronDown, ChevronRight, Image, FileText, Plus, Trash2, Edit, Download, Eye, Paperclip, Menu, Package, CheckSquare } from "lucide-react";
+import { ChevronDown, ChevronRight, Image, FileText, Plus, Trash2, Edit, Download, Eye, Paperclip, Menu, Package, CheckSquare, GripVertical } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
+	DndContext,
+	closestCenter,
+	KeyboardSensor,
+	PointerSensor,
+	useSensor,
+	useSensors,
+} from '@dnd-kit/core';
+import {
+	arrayMove,
+	SortableContext,
+	sortableKeyboardCoordinates,
+	verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import API_BASE_URL from "../config/api";
 
-export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNodes, onToggleNode, onAddChild, onEdit, onRemove, trilhaId, onAddSubmenu, onEditSubmenu, onRemoveSubmenu, onDeleteDocumento, onDeleteDocumentoSubmenu }) {
+// Componente Sortable para Submenus
+function SortableSubmenu({ submenu, index, isDarkMode, theme, onEdit, onRemove, etapaId, onDeleteDocumentoSubmenu }) {
+	const {
+		attributes,
+		listeners,
+		setNodeRef,
+		transform,
+		transition,
+		isDragging,
+	} = useSortable({ id: submenu.id });
+
+	const style = {
+		transform: CSS.Transform.toString(transform),
+		transition,
+		opacity: isDragging ? 0.5 : 1,
+	};
+
+	return (
+		<div 
+			ref={setNodeRef}
+			style={style}
+			className={`group relative rounded-xl border-2 overflow-hidden transition-all hover:scale-[1.02] ${isDragging ? 'z-50 cursor-grabbing' : ''} ${
+				isDarkMode 
+					? 'bg-gradient-to-r from-purple-900/20 via-purple-800/10 to-transparent border-purple-500/30 hover:border-purple-500/60 hover:shadow-lg hover:shadow-purple-500/20' 
+					: 'bg-gradient-to-r from-purple-50 via-purple-25 to-transparent border-purple-200 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-200/50'
+			}`}
+		>
+			{/* Barra lateral colorida */}
+			<div className={`absolute left-0 top-0 bottom-0 w-1 ${isDarkMode ? 'bg-gradient-to-b from-purple-400 to-pink-500' : 'bg-gradient-to-b from-purple-500 to-pink-600'}`} />
+			
+			<div className="pl-4 pr-3 py-3">
+				<div className="flex items-start gap-3">
+					{/* Handle para arrastar */}
+					<div 
+						{...attributes} 
+						{...listeners}
+						className={`cursor-grab active:cursor-grabbing flex-shrink-0 ${isDarkMode ? 'text-purple-400 hover:text-purple-300' : 'text-purple-600 hover:text-purple-700'} transition-colors`}
+						title="Arrastar para reordenar"
+					>
+						<GripVertical className="w-4 h-4" />
+					</div>
+
+					{/* Ícone e número */}
+					<div className="flex-shrink-0 flex items-center gap-2">
+						<div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${isDarkMode ? 'bg-purple-600/30 text-purple-300' : 'bg-purple-200 text-purple-700'}`}>
+							{index + 1}
+						</div>
+					</div>
+					
+					{/* Conteúdo */}
+					<div className="flex-1 min-w-0">
+						<h5 className={`font-bold text-sm mb-1 ${isDarkMode ? 'text-purple-300' : 'text-purple-900'}`}>
+							{submenu.titulo}
+						</h5>
+						{submenu.descricao && (
+							<p className={`text-xs leading-relaxed ${isDarkMode ? 'text-purple-200/70' : 'text-purple-700/70'}`}>
+								{submenu.descricao}
+							</p>
+						)}
+						
+						{/* Documentos do submenu */}
+						{submenu.documentos && submenu.documentos.length > 0 && (
+							<div className="mt-2 space-y-1">
+								<div className="flex items-center gap-1">
+									<Paperclip className={`w-3 h-3 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+									<span className={`text-[10px] font-medium ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>
+										{submenu.documentos.length} {submenu.documentos.length === 1 ? 'arquivo' : 'arquivos'}
+									</span>
+								</div>
+								<div className="flex flex-wrap gap-1 mt-1">
+									{submenu.documentos.slice(0, 3).map((doc, idx) => {
+										const isImg = doc.tipo?.startsWith('image/');
+										return (
+											<div key={doc.id || idx} className={`group/doc flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] ${isDarkMode ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
+												{isImg ? <Image className="w-2.5 h-2.5" /> : <FileText className="w-2.5 h-2.5" />}
+												<span className="truncate max-w-[60px]">{doc.nome}</span>
+												{doc.id && onDeleteDocumentoSubmenu && (
+													<button
+														onClick={(e) => {
+															e.stopPropagation();
+															onDeleteDocumentoSubmenu(submenu.id, doc.id, doc.nome);
+														}}
+														className={`opacity-0 group-hover/doc:opacity-100 transition-opacity ${isDarkMode ? 'hover:text-red-300' : 'hover:text-red-600'}`}
+														title="Excluir"
+													>
+														<Trash2 className="w-2.5 h-2.5" />
+													</button>
+												)}
+											</div>
+										);
+									})}
+									{submenu.documentos.length > 3 && (
+										<span className={`text-[9px] ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>+{submenu.documentos.length - 3}</span>
+									)}
+								</div>
+							</div>
+						)}
+					</div>
+					
+					{/* Botões de ação */}
+					<div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+						{onEdit && (
+							<button
+								onClick={(e) => {
+									e.stopPropagation();
+									onEdit(etapaId, submenu);
+								}}
+								className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'hover:bg-blue-500/20 text-blue-400' : 'hover:bg-blue-100 text-blue-600'}`}
+								title="Editar submenu"
+							>
+								<Edit className="w-3.5 h-3.5" />
+							</button>
+						)}
+						{onRemove && (
+							<button
+								onClick={(e) => {
+									e.stopPropagation();
+									onRemove(submenu.id);
+								}}
+								className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-100 text-red-600'}`}
+								title="Remover submenu"
+							>
+								<Trash2 className="w-3.5 h-3.5" />
+							</button>
+						)}
+					</div>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNodes, onToggleNode, onAddChild, onEdit, onRemove, trilhaId, onAddSubmenu, onEditSubmenu, onRemoveSubmenu, onDeleteDocumento, onDeleteDocumentoSubmenu, onReload }) {
 	const { theme, isDarkMode } = useTheme();
+	
+	// Configuração do drag and drop para submenus
+	const sensors = useSensors(
+		useSensor(PointerSensor),
+		useSensor(KeyboardSensor, {
+			coordinateGetter: sortableKeyboardCoordinates,
+		})
+	);
+
+	// Função para lidar com o fim do arrasto de submenus
+	const handleDragEndSubmenus = async (event) => {
+		const { active, over } = event;
+
+		if (!over || active.id === over.id) return;
+
+		const submenus = etapa.submenus || [];
+		const oldIndex = submenus.findIndex((s) => s.id === active.id);
+		const newIndex = submenus.findIndex((s) => s.id === over.id);
+
+		if (oldIndex === -1 || newIndex === -1) return;
+
+		// Reordenar localmente
+		const reordenados = arrayMove(submenus, oldIndex, newIndex);
+
+		try {
+			// Identificar o intervalo afetado
+			const minIndex = Math.min(oldIndex, newIndex);
+			const maxIndex = Math.max(oldIndex, newIndex);
+			
+			// Atualizar apenas os submenus afetados
+			const updatePromises = [];
+			for (let i = minIndex; i <= maxIndex; i++) {
+				const submenu = reordenados[i];
+				const novaOrdem = i + 1;
+				updatePromises.push(
+					fetch(`${API_BASE_URL}/submenus/${submenu.id}`, {
+						method: 'PUT',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ ordem: novaOrdem })
+					}).catch(err => {
+						console.error(`Erro ao atualizar ordem do submenu ${submenu.id}:`, err);
+						throw err;
+					})
+				);
+			}
+
+			if (updatePromises.length > 0) {
+				await Promise.all(updatePromises);
+				// Recarregar apenas os dados
+				if (onReload) {
+					await onReload();
+				}
+			}
+		} catch (error) {
+			console.error('Erro ao reordenar submenus:', error);
+			alert('Erro ao salvar nova ordem. Tente novamente.');
+		}
+	};
+	
+	// Hook do sortable para arrastar etapas principais (level 0)
+	const {
+		attributes,
+		listeners,
+		setNodeRef,
+		transform,
+		transition,
+		isDragging,
+	} = useSortable({ 
+		id: etapa.id,
+		disabled: level > 0 // Desabilitar drag para sub-etapas por enquanto
+	});
+
+	const style = level === 0 ? {
+		transform: CSS.Transform.toString(transform),
+		transition,
+		opacity: isDragging ? 0.5 : 1,
+	} : {};
+	
 	// Suportar tanto all_children (API) quanto subEtapas (fallback)
 	const children = etapa.all_children || etapa.subEtapas || [];
 	const hasChildren = children.length > 0;
@@ -31,12 +258,28 @@ export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNod
 	};
 
 	return (
-		<div className="mb-2">
+		<div 
+			ref={level === 0 ? setNodeRef : undefined}
+			style={style}
+			className="mb-2"
+		>
 			<div 
-				className={`rounded-xl p-4 border transition-all ${level > 0 ? 'ml-6' : ''} ${theme.bg.input} ${theme.border.input} ${isDarkMode ? 'hover:border-blue-500/50' : 'hover:border-gray-400'}`}
+				className={`rounded-xl p-4 border transition-all ${level > 0 ? 'ml-6' : ''} ${theme.bg.input} ${theme.border.input} ${isDarkMode ? 'hover:border-blue-500/50' : 'hover:border-gray-400'} ${isDragging ? 'z-50 cursor-grabbing' : ''}`}
 				style={{ marginLeft: level > 0 ? `${level * 24}px` : '0' }}
 			>
 				<div className="flex items-start gap-3">
+					{/* Handle de arrastar para etapas principais */}
+					{level === 0 && (
+						<div 
+							{...attributes} 
+							{...listeners}
+							className={`cursor-grab active:cursor-grabbing ${isDarkMode ? 'text-slate-400 hover:text-blue-400' : 'text-gray-400 hover:text-gray-700'} transition-colors flex-shrink-0`}
+							title="Arrastar para reordenar"
+						>
+							<GripVertical className="w-5 h-5" />
+						</div>
+					)}
+					
 					{/* Botão de expandir se tiver filhos */}
 					<button
 						onClick={() => hasChildren && onToggleNode(etapa.id)}
@@ -166,110 +409,32 @@ export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNod
 								</span>
 							</div>
 							{submenusExpanded && (
-								<div className="space-y-2">
-									{etapa.submenus.map((submenu, i) => (
-										<div 
-											key={submenu.id} 
-											className={`group relative rounded-xl border-2 overflow-hidden transition-all hover:scale-[1.02] ${
-												isDarkMode 
-													? 'bg-gradient-to-r from-purple-900/20 via-purple-800/10 to-transparent border-purple-500/30 hover:border-purple-500/60 hover:shadow-lg hover:shadow-purple-500/20' 
-													: 'bg-gradient-to-r from-purple-50 via-purple-25 to-transparent border-purple-200 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-200/50'
-											}`}
-										>
-											{/* Barra lateral colorida */}
-											<div className={`absolute left-0 top-0 bottom-0 w-1 ${isDarkMode ? 'bg-gradient-to-b from-purple-400 to-pink-500' : 'bg-gradient-to-b from-purple-500 to-pink-600'}`} />
-											
-											<div className="pl-4 pr-3 py-3">
-												<div className="flex items-start gap-3">
-													{/* Ícone e número */}
-													<div className="flex-shrink-0 flex items-center gap-2">
-														<div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${isDarkMode ? 'bg-purple-600/30 text-purple-300' : 'bg-purple-200 text-purple-700'}`}>
-															{i + 1}
-														</div>
-													</div>
-													
-													{/* Conteúdo */}
-													<div className="flex-1 min-w-0">
-														<h5 className={`font-bold text-sm mb-1 ${isDarkMode ? 'text-purple-300' : 'text-purple-900'}`}>
-															{submenu.titulo}
-														</h5>
-														{submenu.descricao && (
-															<p className={`text-xs leading-relaxed ${isDarkMode ? 'text-purple-200/70' : 'text-purple-700/70'}`}>
-																{submenu.descricao}
-															</p>
-														)}
-														
-														{/* Documentos do submenu */}
-														{submenu.documentos && submenu.documentos.length > 0 && (
-															<div className="mt-2 space-y-1">
-																<div className="flex items-center gap-1">
-																	<Paperclip className={`w-3 h-3 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-																	<span className={`text-[10px] font-medium ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>
-																		{submenu.documentos.length} {submenu.documentos.length === 1 ? 'arquivo' : 'arquivos'}
-																	</span>
-																</div>
-																<div className="flex flex-wrap gap-1 mt-1">
-																	{submenu.documentos.slice(0, 3).map((doc, idx) => {
-																		const isImg = doc.tipo?.startsWith('image/');
-																		return (
-																			<div key={doc.id || idx} className={`group/doc flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] ${isDarkMode ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
-																				{isImg ? <Image className="w-2.5 h-2.5" /> : <FileText className="w-2.5 h-2.5" />}
-																				<span className="truncate max-w-[60px]">{doc.nome}</span>
-																				{doc.id && onDeleteDocumentoSubmenu && (
-																					<button
-																						onClick={(e) => {
-																							e.stopPropagation();
-																							onDeleteDocumentoSubmenu(submenu.id, doc.id, doc.nome);
-																						}}
-																						className={`opacity-0 group-hover/doc:opacity-100 transition-opacity ${isDarkMode ? 'hover:text-red-300' : 'hover:text-red-600'}`}
-																						title="Excluir"
-																					>
-																						<Trash2 className="w-2.5 h-2.5" />
-																					</button>
-																				)}
-																			</div>
-																		);
-																	})}
-																	{submenu.documentos.length > 3 && (
-																		<span className={`text-[9px] ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>+{submenu.documentos.length - 3}</span>
-																	)}
-																</div>
-															</div>
-														)}
-													</div>
-													
-													{/* Botões de ação */}
-													<div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-														{onEditSubmenu && (
-															<button
-																onClick={(e) => {
-																	e.stopPropagation();
-																	onEditSubmenu(etapa.id, submenu);
-																}}
-																className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'hover:bg-blue-500/20 text-blue-400' : 'hover:bg-blue-100 text-blue-600'}`}
-																title="Editar submenu"
-															>
-																<Edit className="w-3.5 h-3.5" />
-															</button>
-														)}
-														{onRemoveSubmenu && (
-															<button
-																onClick={(e) => {
-																	e.stopPropagation();
-																	onRemoveSubmenu(submenu.id);
-																}}
-																className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-100 text-red-600'}`}
-																title="Remover submenu"
-															>
-																<Trash2 className="w-3.5 h-3.5" />
-															</button>
-														)}
-													</div>
-												</div>
-											</div>
+								<DndContext
+									sensors={sensors}
+									collisionDetection={closestCenter}
+									onDragEnd={handleDragEndSubmenus}
+								>
+									<SortableContext
+										items={etapa.submenus.map(s => s.id)}
+										strategy={verticalListSortingStrategy}
+									>
+										<div className="space-y-2">
+											{etapa.submenus.map((submenu, i) => (
+												<SortableSubmenu
+													key={submenu.id}
+													submenu={submenu}
+													index={i}
+													isDarkMode={isDarkMode}
+													theme={theme}
+													onEdit={onEditSubmenu}
+													onRemove={onRemoveSubmenu}
+													etapaId={etapa.id}
+													onDeleteDocumentoSubmenu={onDeleteDocumentoSubmenu}
+												/>
+											))}
 										</div>
-									))}
-								</div>
+									</SortableContext>
+								</DndContext>
 							)}
 						</div>
 					)}
@@ -408,6 +573,9 @@ export default function EtapaTreeNode({ etapa, level = 0, index = 1, expandedNod
 							onAddSubmenu={onAddSubmenu}
 							onEditSubmenu={onEditSubmenu}
 							onRemoveSubmenu={onRemoveSubmenu}
+							onDeleteDocumento={onDeleteDocumento}
+							onDeleteDocumentoSubmenu={onDeleteDocumentoSubmenu}
+							onReload={onReload}
 						/>
 					))}
 				</div>

@@ -1,19 +1,49 @@
 import React, { useState } from "react";
-import { Edit, Trash2, Maximize2, FileText, Image, Menu, Package, ChevronDown, ChevronUp } from "lucide-react";
+import { Edit, Trash2, Maximize2, FileText, Image, Menu, Package, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 export default function TrilhaCard({ trilha, onViewTree, onEdit, onDelete, onAddSubmenu, onEditSubmenu, onRemoveSubmenu }) {
 	const { theme, isDarkMode } = useTheme();
 	const [showSubmenus, setShowSubmenus] = useState(false);
 	
+	const {
+		attributes,
+		listeners,
+		setNodeRef,
+		transform,
+		transition,
+		isDragging,
+	} = useSortable({ id: trilha.id });
+
+	const style = {
+		transform: CSS.Transform.toString(transform),
+		transition,
+		opacity: isDragging ? 0.5 : 1,
+	};
+	
 	// Buscar submenus diretos da trilha (filhos do primeiro nível)
 	const submenusDirectos = trilha.submenus || [];
 
 	return (
-		<div className={`group rounded-2xl shadow-md border overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] ${theme.bg.card} ${theme.border.card}`}>
-			{/* Header do Card */}
+		<div 
+			ref={setNodeRef}
+			style={style}
+			className={`group rounded-2xl shadow-md border overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] ${theme.bg.card} ${theme.border.card} ${isDragging ? 'z-50 cursor-grabbing' : 'cursor-grab'}`}
+		>
+			{/* Header do Card com Handle de Drag */}
 			<div className={`border-b p-4 ${isDarkMode ? 'bg-gradient-to-r from-blue-600/10 to-purple-600/10 border-slate-700' : 'bg-gradient-to-r from-gray-200 to-gray-100 border-gray-300'}`}>
 				<div className="flex items-start justify-between mb-2">
+					{/* Handle para arrastar */}
+					<div 
+						{...attributes} 
+						{...listeners}
+						className={`mr-2 mt-1 cursor-grab active:cursor-grabbing ${isDarkMode ? 'text-slate-400 hover:text-blue-400' : 'text-gray-400 hover:text-gray-700'} transition-colors`}
+						title="Arrastar para reordenar"
+					>
+						<GripVertical className="w-5 h-5" />
+					</div>
 					<div className="flex-1">
 						<h3 className={`text-lg font-bold mb-1 line-clamp-2 ${theme.text.primary}`}>{trilha.nome}</h3>
 					<div className={`flex items-center gap-3 text-xs ${theme.text.tertiary}`}>

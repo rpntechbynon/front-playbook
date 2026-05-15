@@ -2,9 +2,84 @@ import React from "react";
 import { X, FileText, Plus, Package } from "lucide-react";
 import EtapaTreeNode from "./EtapaTreeNode";
 import { useTheme } from "../contexts/ThemeContext";
+import {
+	DndContext,
+	closestCenter,
+	KeyboardSensor,
+	PointerSensor,
+	useSensor,
+	useSensors,
+} from '@dnd-kit/core';
+import {
+	arrayMove,
+	SortableContext,
+	sortableKeyboardCoordinates,
+	verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import API_BASE_URL from "../config/api";
 
-export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClose, onAddEtapa, onEditEtapa, onRemoveEtapa, onAddSubmenu, onEditSubmenu, onRemoveSubmenu, onDeleteDocumento, onDeleteDocumentoSubmenu }) {
+export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClose, onAddEtapa, onEditEtapa, onRemoveEtapa, onAddSubmenu, onEditSubmenu, onRemoveSubmenu, onDeleteDocumento, onDeleteDocumentoSubmenu, onReload }) {
 	const { theme, isDarkMode } = useTheme();
+
+	// Configuração do drag and drop
+	const sensors = useSensors(
+		useSensor(PointerSensor),
+		useSensor(KeyboardSensor, {
+			coordinateGetter: sortableKeyboardCoordinates,
+		})
+	);
+
+	// Função para lidar com o fim do arrasto de etapas principais
+	const handleDragEndEtapas = async (event) => {
+		const { active, over } = event;
+
+		if (!over || active.id === over.id) return;
+
+		const etapas = trilha.etapas || [];
+		const oldIndex = etapas.findIndex((e) => e.id === active.id);
+		const newIndex = etapas.findIndex((e) => e.id === over.id);
+
+		if (oldIndex === -1 || newIndex === -1) return;
+
+		// Reordenar localmente
+		const reordenadas = arrayMove(etapas, oldIndex, newIndex);
+
+		try {
+			// Identificar o intervalo afetado
+			const minIndex = Math.min(oldIndex, newIndex);
+			const maxIndex = Math.max(oldIndex, newIndex);
+			
+			// Atualizar apenas as etapas afetadas
+			const updatePromises = [];
+			for (let i = minIndex; i <= maxIndex; i++) {
+				const etapa = reordenadas[i];
+				const novaOrdem = i + 1;
+				if (etapa.ordem !== novaOrdem) {
+					updatePromises.push(
+						fetch(`${API_BASE_URL}/decisoes/${etapa.id}`, {
+							method: 'PUT',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({ ordem: novaOrdem })
+						}).catch(err => {
+							console.error(`Erro ao atualizar ordem da etapa ${etapa.id}:`, err);
+							throw err;
+						})
+					);
+				}
+			}
+
+			if (updatePromises.length > 0) {
+				await Promise.all(updatePromises);
+				// Recarregar apenas os dados da trilha
+				if (onReload) {
+					await onReload();
+				}
+			}
+		} catch (error) {
+			console.error('Erro ao reordenar etapas:', error);
+			alert('Erro ao salvar nova ordem. Tente novamente.');
+		}
+	};
 
 	if (!trilha) return null;
 
@@ -33,34 +108,46 @@ export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClo
 				</button>
 			</div>				{/* Conteúdo do Modal - Árvore Expansível */}
 				<div className="p-6 overflow-y-auto max-h-[calc(85vh-140px)]">
-					<div className="space-y-2">
-						{trilha.etapas?.map((etapa, index) => (
-							<EtapaTreeNode
-								key={etapa.id}
-								etapa={etapa}
-								level={0}
-								index={index + 1}
-								expandedNodes={expandedNodes}
-								onToggleNode={onToggleNode}
-								onAddChild={onAddEtapa}
-								onEdit={onEditEtapa}
-								onRemove={onRemoveEtapa}
-								trilhaId={trilha.id}
-								onAddSubmenu={onAddSubmenu}
-								onEditSubmenu={onEditSubmenu}
-								onRemoveSubmenu={onRemoveSubmenu}							onDeleteDocumento={onDeleteDocumento}
-							onDeleteDocumentoSubmenu={onDeleteDocumentoSubmenu}							/>
-						))}
-						
-						{/* Botão para adicionar etapa raiz */}
-						<button
-							onClick={() => onAddEtapa(trilha.id, null)}
-							className={`w-full mt-4 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-xl transition-all group ${isDarkMode ? 'bg-blue-600/20 border-blue-500/40 text-blue-400 hover:bg-blue-600/30 hover:border-blue-500/60' : 'bg-gray-100 border-gray-400 text-gray-700 hover:bg-gray-200 hover:border-gray-500'}`}
+					<DndContext
+						sensors={sensors}
+						collisionDetection={closestCenter}
+						onDragEnd={handleDragEndEtapas}
+					>
+						<SortableContext
+							items={(trilha.etapas || []).map(e => e.id)}
+							strategy={verticalListSortingStrategy}
 						>
-							<Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
-							<span className="font-semibold">Adicionar Nova Etapa Principal</span>
-						</button>
-					</div>
+							<div className="space-y-2">
+								{trilha.etapas?.map((etapa, index) => (
+									<EtapaTreeNode
+										key={etapa.id}
+										etapa={etapa}
+										level={0}
+										index={index + 1}
+										expandedNodes={expandedNodes}
+										onToggleNode={onToggleNode}
+										onAddChild={onAddEtapa}
+										onEdit={onEditEtapa}
+										onRemove={onRemoveEtapa}
+										trilhaId={trilha.id}
+										onAddSubmenu={onAddSubmenu}
+										onEditSubmenu={onEditSubmenu}
+										onRemoveSubmenu={onRemoveSubmenu}							onDeleteDocumento={onDeleteDocumento}
+				onDeleteDocumentoSubmenu={onDeleteDocumentoSubmenu}							onReload={onReload}
+									/>
+								))}
+								
+								{/* Botão para adicionar etapa raiz */}
+								<button
+									onClick={() => onAddEtapa(trilha.id, null)}
+									className={`w-full mt-4 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-xl transition-all group ${isDarkMode ? 'bg-blue-600/20 border-blue-500/40 text-blue-400 hover:bg-blue-600/30 hover:border-blue-500/60' : 'bg-gray-100 border-gray-400 text-gray-700 hover:bg-gray-200 hover:border-gray-500'}`}
+								>
+									<Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+									<span className="font-semibold">Adicionar Nova Etapa Principal</span>
+								</button>
+							</div>
+						</SortableContext>
+					</DndContext>
 
 					{/* Resumo de Submenus */}
 					{(() => {

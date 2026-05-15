@@ -1,14 +1,49 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Link, MapPin, ExternalLink, ChevronRight, Layers, Navigation, ArrowRight, Info, Package, CheckSquare, Image, FileText } from "lucide-react";
 import TrilhaService from "../services/TrilhaService";
 import { useTheme } from "../contexts/ThemeContext";
 
-export default function MenuDireito({ selectedTrilha, onSelectDestination, isMinimized, onToggleMinimize, onSelectSubmenuDocument, onSelectSubmenuImages }) {
+export default function MenuDireito({ selectedTrilha, onSelectDestination, isMinimized, onToggleMinimize, onSelectSubmenuImages }) {
   const { theme, isDarkMode } = useTheme();
-  const [destinations, setDestinations] = useState([]);
   const [allTrilhas, setAllTrilhas] = useState([]);
   const [selectedDestinationId, setSelectedDestinationId] = useState(null);
   const [tooltipProdutoId, setTooltipProdutoId] = useState(null);
+  const hasFetchedRef = useRef(false);
+
+  // Função para transformar URLs em links clicáveis
+  const renderTextWithLinks = (text) => {
+    if (!text) return null;
+    
+    // Regex para detectar URLs (http, https, www)
+    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    
+    return parts.map((part, index) => {
+      // Se é uma URL, transforma em link
+      if (part.match(urlRegex)) {
+        const url = part.startsWith('http') ? part : `https://${part}`;
+        return (
+          <a
+            key={index}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`underline font-semibold transition-colors ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </a>
+        );
+      }
+      // Texto normal - processar quebras de linha
+      return part.split('\n').map((line, lineIndex, lines) => (
+        <React.Fragment key={`${index}-${lineIndex}`}>
+          {line}
+          {lineIndex < lines.length - 1 && <br />}
+        </React.Fragment>
+      ));
+    });
+  };
 
   // Função para renderizar texto com tópicos (separados por ;)
   const renderTextWithTopics = (text) => {
@@ -24,7 +59,7 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
             {topics.map((topic, index) => (
               <div key={index} className="flex items-start gap-2">
                 <span className={`mt-0.5 w-1 h-1 rounded-full flex-shrink-0 ${isDarkMode ? 'bg-blue-400' : 'bg-gray-600'}`} />
-                <span className="flex-1 text-xs leading-tight">{topic}</span>
+                <span className="flex-1 text-xs leading-tight">{renderTextWithLinks(topic)}</span>
               </div>
             ))}
           </div>
@@ -32,27 +67,22 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
       }
     }
     
-    // Se não tem ; ou tem apenas um item, retorna texto normal
-    return <span>{text}</span>;
+    // Se não tem ; ou tem apenas um item, retorna texto normal com links e quebras de linha
+    return <span>{renderTextWithLinks(text)}</span>;
   };
 
-  useEffect(() => {
-    fetchAllTrilhas();
-  }, []);
+  const fetchAllTrilhas = useCallback(async () => {
+    const flattenTrilhas = (trilhas) => {
+      let flattened = [];
+      trilhas.forEach(trilha => {
+        flattened.push(trilha);
+        if (trilha.all_children && trilha.all_children.length > 0) {
+          flattened = flattened.concat(flattenTrilhas(trilha.all_children));
+        }
+      });
+      return flattened;
+    };
 
-  useEffect(() => {
-    if (selectedTrilha && selectedTrilha.go_to) {
-      const goToIds = selectedTrilha.go_to.split(',').map(id => id.trim());
-      const destinationTrilhas = findTrilhasByIds(goToIds);
-      setDestinations(destinationTrilhas);
-    } else {
-      setDestinations([]);
-    }
-    // Limpar seleção quando mudar a trilha principal
-    setSelectedDestinationId(null);
-  }, [selectedTrilha, allTrilhas]);
-
-  const fetchAllTrilhas = async () => {
     try {
       const data = await TrilhaService.buscarTrilhas();
       const trilhasFormatadas = TrilhaService.transformarParaFormato(data);
@@ -61,24 +91,36 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
     } catch (error) {
       console.error("Erro ao carregar trilhas:", error);
     }
-  };
+  }, []);
 
-  const flattenTrilhas = (trilhas) => {
-    let flattened = [];
-    trilhas.forEach(trilha => {
-      flattened.push(trilha);
-      if (trilha.all_children && trilha.all_children.length > 0) {
-        flattened = flattened.concat(flattenTrilhas(trilha.all_children));
-      }
-    });
-    return flattened;
-  };
-
-  const findTrilhasByIds = (ids) => {
+  const findTrilhasByIds = useCallback((ids) => {
     return ids
       .map(id => allTrilhas.find(trilha => trilha.id === parseInt(id)))
       .filter(trilha => trilha !== undefined);
-  };
+  }, [allTrilhas]);
+
+  // Calcular destinations usando useMemo ao invés de useEffect
+  const destinations = useMemo(() => {
+    if (selectedTrilha && selectedTrilha.go_to) {
+      const goToIds = selectedTrilha.go_to.split(',').map(id => id.trim());
+      return findTrilhasByIds(goToIds);
+    }
+    return [];
+  }, [selectedTrilha, findTrilhasByIds]);
+
+  useEffect(() => {
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchAllTrilhas();
+    }
+  }, [fetchAllTrilhas]);
+
+  // Limpar seleção quando mudar a trilha principal
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedDestinationId(null);
+  }, [selectedTrilha]);
 
   const handleDestinationClick = (destination) => {
     setSelectedDestinationId(destination.id);
