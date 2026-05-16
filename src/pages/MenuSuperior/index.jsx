@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { UserPlus, TrendingUp, Sun, Moon, AppWindow, Package } from "lucide-react";
+import { UserPlus, TrendingUp, Sun, Moon, AppWindow, Package, Sparkles } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
 
 export default function MenuSuperior() {
@@ -55,6 +55,12 @@ export default function MenuSuperior() {
             <Link to="/trilha" className={`group relative px-6 py-2.5 rounded-xl ${theme.text.primary} font-semibold ${theme.bg.button} ${isDarkMode ? 'hover:bg-gradient-to-r hover:from-purple-600 hover:to-purple-500' : 'hover:bg-gray-700 hover:text-white'} transition-all duration-300 shadow-md hover:scale-105 flex items-center gap-2`}>
               <TrendingUp className="w-5 h-5" />
               Trilha de Vendas
+            </Link>
+          </li>
+          <li>
+            <Link to="/tela" className={`group relative px-6 py-2.5 rounded-xl ${theme.text.primary} font-semibold ${theme.bg.button} ${isDarkMode ? 'hover:bg-gradient-to-r hover:from-red-600 hover:to-red-500' : 'hover:bg-gray-700 hover:text-white'} transition-all duration-300 shadow-md hover:scale-105 flex items-center gap-2`}>
+              <Sparkles className="w-5 h-5" />
+              Tela Nova
             </Link>
           </li>
           <li>
