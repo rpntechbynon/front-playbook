@@ -1,78 +1,100 @@
-import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { UserPlus, TrendingUp, Sun, Moon, AppWindow, Package, Sparkles } from "lucide-react";
-import { useTheme } from "../../contexts/ThemeContext";
+import { Search, Home, UserPlus, TrendingUp, Package, Sparkles } from "lucide-react";
+import { useMemo } from "react";
 
 export default function MenuSuperior() {
-  const { isDarkMode, toggleTheme, theme } = useTheme();
   const location = useLocation();
+
+  // Calcula o nome do usuário do sessionStorage
+  const { userName, userInitial } = useMemo(() => {
+    try {
+      const usuarioData = sessionStorage.getItem('usuario');
+      if (usuarioData) {
+        const usuario = JSON.parse(usuarioData);
+        const nome = usuario.nome || usuario.name || "Usuário";
+        const primeiroNome = nome.split(' ')[0];
+        return {
+          userName: primeiroNome,
+          userInitial: primeiroNome.charAt(0).toUpperCase()
+        };
+      }
+    } catch (error) {
+      console.error("Erro ao parsear dados do usuário:", error);
+    }
+    return { userName: "Usuário", userInitial: "U" };
+  }, []);
   
-  const backToSolutions = () => {
-    // Remove dados da sessão atual do CRM
-    sessionStorage.removeItem('usuario');
-    
-    // Redireciona para o painel principal (Solutions)
-    // Nota: O painel Solutions deverá ter sua própria autenticação
-    window.location.href = '/inicio';
-  };
+  const menuItems = [
+    { path: "/home", label: "Home", icon: Home },
+    { path: "/cadastro", label: "Cadastro", icon: UserPlus },
+    { path: "/produtos", label: "Produtos", icon: Package },
+    { path: "/trilha", label: "Trilha de Vendas", icon: TrendingUp },
+    { path: "/tela", label: "PlayBook", icon: Sparkles },
+  ];
   
   return (
-    <nav className={`w-full ${theme.bg.navbar} shadow-lg fixed top-0 left-0 z-50 border-b ${theme.border.card} transition-colors duration-300`}>
-      <div className="max-w-full px-4 flex items-center justify-between h-20">
-        <div className="flex items-center gap-4">
-          <div className={`w-10 h-10 ${isDarkMode ? 'bg-gradient-to-br from-blue-500 to-purple-600' : 'bg-gradient-to-br from-gray-700 to-gray-900'} rounded-lg flex items-center justify-center shadow-md`}>
-            <span className="text-white font-black text-xl">P</span>
+    <nav className="w-full bg-white shadow-sm fixed top-0 left-0 z-50 border-b border-gray-200">
+      <div className="max-w-full px-3 md:px-6 flex items-center justify-between h-14">
+        {/* Logo */}
+        <Link to="/home" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+            <span className="text-white font-bold text-lg">P</span>
           </div>
-          <span className={`font-black text-2xl ${theme.text.primary} tracking-tight`}>PlayBook</span>
-          
-          <button
-            onClick={backToSolutions}
-            className={`ml-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5 ${
-              location.pathname === '/inicio' 
-                ? `${isDarkMode ? 'bg-teal-600/20 text-teal-400 border border-teal-500/50' : 'bg-teal-50 text-teal-600 border border-teal-300'}`
-                : `${theme.text.secondary} ${isDarkMode ? 'hover:bg-white/10 hover:text-teal-400' : 'hover:bg-gray-100 hover:text-teal-600'}`
-            }`}
-            title="Voltar para Solutions"
-          >
-            <AppWindow className="w-4 h-4" />
-            <span className="text-xs">Solutions</span>
-          </button>
+          <span className="font-bold text-sm text-gray-900 tracking-tight uppercase">
+            PlayBook <span className="text-gray-400 text-xs ml-1">v.2.0</span>
+          </span>
+        </Link>
+
+        {/* Campo de Busca - Desktop */}
+        <div className="hidden md:flex flex-1 max-w-md mx-6">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar script, objeção ou produto..."
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-300 focus:bg-white placeholder:text-gray-400 transition-colors"
+            />
+            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 text-xs text-gray-500 bg-white border border-gray-200 rounded">
+              ⌘K
+            </kbd>
+          </div>
         </div>
-        <ul className="flex gap-3 items-center">
-          <li>
-            <Link to="/cadastro" className={`group relative px-6 py-2.5 rounded-xl ${theme.text.primary} font-semibold ${theme.bg.button} ${isDarkMode ? 'hover:bg-gradient-to-r hover:from-blue-600 hover:to-blue-500' : 'hover:bg-gray-800 hover:text-white'} transition-all duration-300 shadow-md hover:scale-105 flex items-center gap-2`}>
-              <UserPlus className="w-5 h-5" />
-              Cadastro
-            </Link>
-          </li>
-          <li>
-            <Link to="/produtos" className={`group relative px-6 py-2.5 rounded-xl ${theme.text.primary} font-semibold ${theme.bg.button} ${isDarkMode ? 'hover:bg-gradient-to-r hover:from-green-600 hover:to-green-500' : 'hover:bg-gray-700 hover:text-white'} transition-all duration-300 shadow-md hover:scale-105 flex items-center gap-2`}>
-              <Package className="w-5 h-5" />
-              Produtos
-            </Link>
-          </li>
-          <li>
-            <Link to="/trilha" className={`group relative px-6 py-2.5 rounded-xl ${theme.text.primary} font-semibold ${theme.bg.button} ${isDarkMode ? 'hover:bg-gradient-to-r hover:from-purple-600 hover:to-purple-500' : 'hover:bg-gray-700 hover:text-white'} transition-all duration-300 shadow-md hover:scale-105 flex items-center gap-2`}>
-              <TrendingUp className="w-5 h-5" />
-              Trilha de Vendas
-            </Link>
-          </li>
-          <li>
-            <Link to="/tela" className={`group relative px-6 py-2.5 rounded-xl ${theme.text.primary} font-semibold ${theme.bg.button} ${isDarkMode ? 'hover:bg-gradient-to-r hover:from-red-600 hover:to-red-500' : 'hover:bg-gray-700 hover:text-white'} transition-all duration-300 shadow-md hover:scale-105 flex items-center gap-2`}>
-              <Sparkles className="w-5 h-5" />
-              Tela Nova
-            </Link>
-          </li>
-          <li>
-            <button
-              onClick={toggleTheme}
-              className={`p-3 rounded-xl ${theme.bg.button} ${theme.text.primary} hover:scale-110 transition-all duration-300 shadow-md ${theme.icon.hover}`}
-              title={isDarkMode ? 'Modo Claro' : 'Modo Escuro'}
-            >
-              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-          </li>
+        
+        {/* Menu Items - Desktop */}
+        <ul className="hidden lg:flex gap-1 items-center mr-4">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            
+            return (
+              <li key={item.path}>
+                <Link 
+                  to={item.path} 
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors text-xs ${
+                    isActive 
+                      ? 'bg-red-500 text-white' 
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
+
+        {/* Info de Vendas e Avatar */}
+        <div className="flex items-center gap-3 md:gap-4">
+
+          {/* Avatar do Usuário */}
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+              <span className="text-sm font-semibold text-white">{userInitial}</span>
+            </div>
+            <span className="hidden md:block text-sm text-gray-700 font-medium">{userName}</span>
+          </div>
+        </div>
       </div>
     </nav>
   );

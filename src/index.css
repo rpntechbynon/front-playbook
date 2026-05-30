@@ -50,3 +50,50 @@ button {
   transition-duration: 300ms;
   transition-timing-function: ease-in-out;
 }
+
+/* Animações para loading de imagens */
+@keyframes progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-progress {
+  animation: progress 1.5s ease-in-out infinite;
+}
+
+/* Otimização de renderização de imagens */
+img {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Preload hint para imagens */
+img[loading="eager"] {
+  content-visibility: auto;
+}
+
+/* Blur classes customizadas */
+.blur-sm {
+  filter: blur(4px);
+}
+
+.blur-0 {
+  filter: blur(0);
+}
+
+/* Otimizações de performance */
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}

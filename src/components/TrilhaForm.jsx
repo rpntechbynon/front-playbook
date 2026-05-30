@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Upload, X, Image, FileText, CheckSquare, Square, AlertCircle, Hash, Maximize2, Trash2 } from "lucide-react";
+import { Plus, Upload, X, Image, FileText, CheckSquare, Square, AlertCircle, Hash, Maximize2, Trash2, Loader2 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
 export default function TrilhaForm({ 
@@ -9,24 +9,20 @@ export default function TrilhaForm({
 	setDescricao,
 	ordem,
 	setOrdem,
-	arquivos,
+	arquivos = [],
 	setArquivos,
 	goToSelecionados,
 	setGoToSelecionados,
-	decisoesDisponiveis,
-	loadingDecisoes,
+	decisoesDisponiveis = [],
+	loadingDecisoes = false,
 	onSave, 
 	onCancel,
 	isEditing = false,
+	isSaving = false,
 	errosArquivos = [],
 	onDeleteDocumento
 }) {
 	const { theme, isDarkMode } = useTheme();
-	
-	// Debug: log dos arquivos recebidos
-	console.log('TrilhaForm - arquivos recebidos:', arquivos);
-	console.log('TrilhaForm - isEditing:', isEditing);
-	console.log('TrilhaForm - documentos existentes:', arquivos.filter(a => !(a instanceof File)));
 	
 	const toggleDecisao = (id) => {
 		if (goToSelecionados.includes(id)) {
@@ -79,7 +75,7 @@ export default function TrilhaForm({
 					value={ordem || ""}
 					onChange={(e) => {
 						const valor = e.target.value ? parseInt(e.target.value) : null;
-						console.log('Campo ordem alterado:', e.target.value, '-> parseInt:', valor);
+
 						setOrdem(valor);
 					}}
 					placeholder="Ex: 1"
@@ -400,13 +396,22 @@ export default function TrilhaForm({
 			<div className="flex gap-3">
 				<button
 					onClick={onSave}
-					className={`flex-1 px-6 py-3 text-white font-semibold rounded-xl shadow-md transition-all duration-300 hover:scale-105 ${isDarkMode ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-blue-500/50' : 'bg-gray-800 hover:bg-gray-900'}`}
+					disabled={isSaving}
+					className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
 				>
-					{isEditing ? "Atualizar Trilha" : "Salvar Trilha"}
+					{isSaving ? (
+						<>
+							<Loader2 className="w-5 h-5 animate-spin" />
+							{isEditing ? "Atualizando..." : "Salvando..."}
+						</>
+					) : (
+						<>{isEditing ? "Atualizar Trilha" : "Salvar Trilha"}</>
+					)}
 				</button>
 				<button
 					onClick={onCancel}
-					className={`px-6 py-3 font-semibold rounded-xl transition-all ${theme.bg.button} ${theme.text.secondary} ${theme.hover}`}
+					disabled={isSaving}
+					className="px-6 py-3 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					Cancelar
 				</button>
