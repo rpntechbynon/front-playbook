@@ -1,28 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { Search, Home, UserPlus, TrendingUp, Package, Sparkles } from "lucide-react";
-import { useMemo } from "react";
 
 export default function MenuSuperior() {
   const location = useLocation();
-
-  // Calcula o nome do usuário do sessionStorage
-  const { userName, userInitial } = useMemo(() => {
-    try {
-      const usuarioData = sessionStorage.getItem('usuario');
-      if (usuarioData) {
-        const usuario = JSON.parse(usuarioData);
-        const nome = usuario.nome || usuario.name || "Usuário";
-        const primeiroNome = nome.split(' ')[0];
-        return {
-          userName: primeiroNome,
-          userInitial: primeiroNome.charAt(0).toUpperCase()
-        };
-      }
-    } catch (error) {
-      console.error("Erro ao parsear dados do usuário:", error);
-    }
-    return { userName: "Usuário", userInitial: "U" };
-  }, []);
   
   const menuItems = [
     { path: "/home", label: "Home", icon: Home },
@@ -61,7 +41,7 @@ export default function MenuSuperior() {
         </div>
         
         {/* Menu Items - Desktop */}
-        <ul className="hidden lg:flex gap-1 items-center mr-4">
+        <ul className="hidden lg:flex gap-1 items-center">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -83,18 +63,6 @@ export default function MenuSuperior() {
             );
           })}
         </ul>
-
-        {/* Info de Vendas e Avatar */}
-        <div className="flex items-center gap-3 md:gap-4">
-
-          {/* Avatar do Usuário */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-              <span className="text-sm font-semibold text-white">{userInitial}</span>
-            </div>
-            <span className="hidden md:block text-sm text-gray-700 font-medium">{userName}</span>
-          </div>
-        </div>
       </div>
     </nav>
   );
