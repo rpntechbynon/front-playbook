@@ -1,7 +1,6 @@
 import React from "react";
 import { X, FileText, Plus, Package } from "lucide-react";
 import EtapaTreeNode from "./EtapaTreeNode";
-import { useTheme } from "../contexts/ThemeContext";
 import {
 	DndContext,
 	closestCenter,
@@ -19,9 +18,6 @@ import {
 import API_BASE_URL from "../config/api";
 
 export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClose, onAddEtapa, onEditEtapa, onRemoveEtapa, onAddSubmenu, onEditSubmenu, onRemoveSubmenu, onDeleteDocumento, onDeleteDocumentoSubmenu, onReload }) {
-	const { theme, isDarkMode } = useTheme();
-
-	// Configuração do drag and drop
 	const sensors = useSensors(
 		useSensor(PointerSensor),
 		useSensor(KeyboardSensor, {
@@ -29,7 +25,6 @@ export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClo
 		})
 	);
 
-	// Função para lidar com o fim do arrasto de etapas principais
 	const handleDragEndEtapas = async (event) => {
 		const { active, over } = event;
 
@@ -41,15 +36,12 @@ export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClo
 
 		if (oldIndex === -1 || newIndex === -1) return;
 
-		// Reordenar localmente
 		const reordenadas = arrayMove(etapas, oldIndex, newIndex);
 
 		try {
-			// Identificar o intervalo afetado
 			const minIndex = Math.min(oldIndex, newIndex);
 			const maxIndex = Math.max(oldIndex, newIndex);
-			
-			// Atualizar apenas as etapas afetadas
+
 			const updatePromises = [];
 			for (let i = minIndex; i <= maxIndex; i++) {
 				const etapa = reordenadas[i];
@@ -70,10 +62,7 @@ export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClo
 
 			if (updatePromises.length > 0) {
 				await Promise.all(updatePromises);
-				// Recarregar apenas os dados da trilha
-				if (onReload) {
-					await onReload();
-				}
+				if (onReload) await onReload();
 			}
 		} catch (error) {
 			console.error('Erro ao reordenar etapas:', error);
@@ -85,28 +74,30 @@ export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClo
 
 	return (
 		<div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-			<div className={`rounded-2xl shadow-2xl border max-w-6xl w-full max-h-[85vh] overflow-hidden ${theme.bg.card} ${theme.border.card}`} onClick={(e) => e.stopPropagation()}>
-				{/* Header do Modal */}
-				<div className={`border-b p-6 flex items-start justify-between sticky top-0 z-10 ${isDarkMode ? 'bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-slate-700' : 'bg-gradient-to-r from-gray-200/50 to-gray-100/50 border-gray-300'}`}>
+			<div className="bg-white rounded-lg shadow-2xl border border-gray-200 max-w-6xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+				{/* Header */}
+				<div className="border-b border-gray-200 p-6 flex items-start justify-between sticky top-0 z-10 bg-gray-50">
 					<div className="flex-1">
-						<h2 className={`text-2xl font-bold mb-2 ${theme.text.primary}`}>{trilha.nome}</h2>
-						<div className={`flex items-center gap-4 text-sm ${theme.text.tertiary}`}>
+						<h2 className="text-2xl font-bold mb-2 text-gray-900">{trilha.nome}</h2>
+						<div className="flex items-center gap-4 text-sm text-gray-600">
 							<span className="flex items-center gap-1">
 								<FileText className="w-4 h-4" />
 								{trilha.etapas?.length || 0} etapas principais
 							</span>
-							<span className={`px-2 py-1 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-gray-200 text-gray-700'}`}>
+							<span className="px-2 py-1 rounded-lg text-xs font-semibold bg-red-100 text-red-700">
 								Visualização em Árvore
 							</span>
 						</div>
 					</div>
-				<button
-					onClick={onClose}
-					className={`p-2 rounded-lg transition-all ${theme.bg.buttonSecondary} ${theme.hover} ${theme.text.secondary}`}
-				>
-					<X className="w-5 h-5" />
-				</button>
-			</div>				{/* Conteúdo do Modal - Árvore Expansível */}
+					<button
+						onClick={onClose}
+						className="p-2 rounded-lg transition-all bg-gray-200 hover:bg-gray-300 text-gray-600"
+					>
+						<X className="w-5 h-5" />
+					</button>
+				</div>
+
+				{/* Conteúdo */}
 				<div className="p-6 overflow-y-auto max-h-[calc(85vh-140px)]">
 					<DndContext
 						sensors={sensors}
@@ -132,15 +123,16 @@ export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClo
 										trilhaId={trilha.id}
 										onAddSubmenu={onAddSubmenu}
 										onEditSubmenu={onEditSubmenu}
-										onRemoveSubmenu={onRemoveSubmenu}							onDeleteDocumento={onDeleteDocumento}
-				onDeleteDocumentoSubmenu={onDeleteDocumentoSubmenu}							onReload={onReload}
+										onRemoveSubmenu={onRemoveSubmenu}
+										onDeleteDocumento={onDeleteDocumento}
+										onDeleteDocumentoSubmenu={onDeleteDocumentoSubmenu}
+										onReload={onReload}
 									/>
 								))}
-								
-								{/* Botão para adicionar etapa raiz */}
+
 								<button
 									onClick={() => onAddEtapa(trilha.id, null)}
-									className={`w-full mt-4 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-xl transition-all group ${isDarkMode ? 'bg-blue-600/20 border-blue-500/40 text-blue-400 hover:bg-blue-600/30 hover:border-blue-500/60' : 'bg-gray-100 border-gray-400 text-gray-700 hover:bg-gray-200 hover:border-gray-500'}`}
+									className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 transition-all group hover:bg-red-50 hover:border-red-400 hover:text-red-600"
 								>
 									<Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
 									<span className="font-semibold">Adicionar Nova Etapa Principal</span>
@@ -156,40 +148,34 @@ export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClo
 							const processar = (items) => {
 								items?.forEach(item => {
 									total += item.submenus?.length || 0;
-									if (item.subEtapas?.length > 0) {
-										processar(item.subEtapas);
-									}
-									if (item.all_children?.length > 0) {
-										processar(item.all_children);
-									}
+									if (item.subEtapas?.length > 0) processar(item.subEtapas);
+									if (item.all_children?.length > 0) processar(item.all_children);
 								});
 							};
 							processar(etapas);
 							return total;
 						};
-						
+
 						const totalSubmenus = contarSubmenus(trilha.etapas);
-						
-						if (totalSubmenus > 0) {
-							return (
-								<div className={`mt-6 p-4 rounded-xl border ${isDarkMode ? 'bg-purple-900/20 border-purple-500/30' : 'bg-purple-50 border-purple-200'}`}>
-									<div className="flex items-center gap-2 mb-2">
-										<div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-purple-600/30' : 'bg-purple-200'}`}>
-											<FileText className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-										</div>
-										<div>
-											<p className={`text-sm font-bold ${isDarkMode ? 'text-purple-400' : 'text-purple-700'}`}>
-												{totalSubmenus} {totalSubmenus === 1 ? 'Submenu Cadastrado' : 'Submenus Cadastrados'}
-											</p>
-											<p className={`text-xs ${isDarkMode ? 'text-purple-300/70' : 'text-purple-600/70'}`}>
-												Expanda as etapas acima para visualizar os submenus
-											</p>
-										</div>
+						if (totalSubmenus === 0) return null;
+
+						return (
+							<div className="mt-6 p-4 rounded-lg border border-gray-200 bg-gray-50">
+								<div className="flex items-center gap-2">
+									<div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-200">
+										<FileText className="w-4 h-4 text-gray-600" />
+									</div>
+									<div>
+										<p className="text-sm font-bold text-gray-700">
+											{totalSubmenus} {totalSubmenus === 1 ? 'Submenu Cadastrado' : 'Submenus Cadastrados'}
+										</p>
+										<p className="text-xs text-gray-500">
+											Expanda as etapas acima para visualizar os submenus
+										</p>
 									</div>
 								</div>
-							);
-						}
-						return null;
+							</div>
+						);
 					})()}
 
 					{/* Resumo de Produtos */}
@@ -199,61 +185,55 @@ export default function TrilhaModal({ trilha, expandedNodes, onToggleNode, onClo
 							const processar = (items) => {
 								items?.forEach(item => {
 									total += item.produtos?.length || 0;
-									if (item.subEtapas?.length > 0) {
-										processar(item.subEtapas);
-									}
-									if (item.all_children?.length > 0) {
-										processar(item.all_children);
-									}
+									if (item.subEtapas?.length > 0) processar(item.subEtapas);
+									if (item.all_children?.length > 0) processar(item.all_children);
 								});
 							};
 							processar(etapas);
 							return total;
 						};
-						
+
 						const totalProdutos = contarProdutos(trilha.etapas);
-						
-						if (totalProdutos > 0) {
-							return (
-								<div className={`mt-4 p-4 rounded-xl border ${isDarkMode ? 'bg-green-900/20 border-green-500/30' : 'bg-green-50 border-green-200'}`}>
-									<div className="flex items-center gap-2 mb-2">
-										<div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-green-600/30' : 'bg-green-200'}`}>
-											<Package className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
-										</div>
-										<div>
-											<p className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>
-												{totalProdutos} {totalProdutos === 1 ? 'Produto Cadastrado' : 'Produtos Cadastrados'}
-											</p>
-											<p className={`text-xs ${isDarkMode ? 'text-green-300/70' : 'text-green-600/70'}`}>
-												Expanda as etapas acima para visualizar os produtos
-											</p>
-										</div>
+						if (totalProdutos === 0) return null;
+
+						return (
+							<div className="mt-4 p-4 rounded-lg border border-gray-200 bg-gray-50">
+								<div className="flex items-center gap-2">
+									<div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-200">
+										<Package className="w-4 h-4 text-gray-600" />
+									</div>
+									<div>
+										<p className="text-sm font-bold text-gray-700">
+											{totalProdutos} {totalProdutos === 1 ? 'Produto Cadastrado' : 'Produtos Cadastrados'}
+										</p>
+										<p className="text-xs text-gray-500">
+											Expanda as etapas acima para visualizar os produtos
+										</p>
 									</div>
 								</div>
-							);
-						}
-						return null;
+							</div>
+						);
 					})()}
 
 					{/* Legenda */}
-					<div className={`mt-6 pt-6 border-t ${theme.border.input}`}>
-						<p className={`text-xs mb-3 font-semibold ${theme.text.tertiary}`}>Legenda de Níveis:</p>
+					<div className="mt-6 pt-6 border-t border-gray-200">
+						<p className="text-xs mb-3 font-semibold text-gray-500">Legenda de Níveis:</p>
 						<div className="flex flex-wrap gap-3">
 							<div className="flex items-center gap-2">
-								<div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg"></div>
-								<span className={`text-xs ${theme.text.tertiary}`}>Nível 1</span>
+								<div className="w-6 h-6 bg-red-500 rounded-lg"></div>
+								<span className="text-xs text-gray-500">Nível 1</span>
 							</div>
 							<div className="flex items-center gap-2">
-								<div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg"></div>
-								<span className={`text-xs ${theme.text.tertiary}`}>Nível 2</span>
+								<div className="w-6 h-6 bg-gray-700 rounded-lg"></div>
+								<span className="text-xs text-gray-500">Nível 2</span>
 							</div>
 							<div className="flex items-center gap-2">
-								<div className="w-6 h-6 bg-gradient-to-br from-pink-500 to-red-600 rounded-lg"></div>
-								<span className={`text-xs ${theme.text.tertiary}`}>Nível 3</span>
+								<div className="w-6 h-6 bg-gray-500 rounded-lg"></div>
+								<span className="text-xs text-gray-500">Nível 3</span>
 							</div>
 							<div className="flex items-center gap-2">
-								<div className="w-6 h-6 bg-gradient-to-br from-orange-500 to-yellow-600 rounded-lg"></div>
-								<span className={`text-xs ${theme.text.tertiary}`}>Nível 4+</span>
+								<div className="w-6 h-6 bg-gray-400 rounded-lg"></div>
+								<span className="text-xs text-gray-500">Nível 4+</span>
 							</div>
 						</div>
 					</div>
