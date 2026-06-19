@@ -514,6 +514,20 @@ export default function Cadastro() {
 		}
 	};
 
+	const handleDeleteDocumentoTrilhaForm = async (documentoId, nomeDocumento) => {
+		if (!confirm(`Deseja realmente excluir o documento "${nomeDocumento}"?`)) return;
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/decisoes/${trilhaEditId}/documentos/${documentoId}`, { method: 'DELETE' });
+			if (!response.ok) throw new Error('Erro ao excluir documento');
+			setArquivos(prev => prev.filter(a => a.id !== documentoId));
+			setToast({ message: "Documento excluído com sucesso!", type: "success" });
+		} catch (error) {
+			console.error('Erro ao excluir documento da trilha:', error);
+			alert('Erro ao excluir documento. Tente novamente.');
+		}
+	};
+
 	const handleDeleteDocumentoEtapaForm = async (documentoId, nomeDocumento) => {
 		if (!confirm(`Deseja realmente excluir o documento "${nomeDocumento}"?`)) return;
 
@@ -640,6 +654,7 @@ export default function Cadastro() {
 								}}
 								isEditing={isEditingTrilha}
 								isSaving={isSaving}
+								onDeleteDocumento={isEditingTrilha ? handleDeleteDocumentoTrilhaForm : undefined}
 							/>
 						</div>
 					)}
