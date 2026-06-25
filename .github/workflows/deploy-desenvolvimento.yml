@@ -3,7 +3,7 @@ name: Deploy Front-end Oficial
 on:
   push:
     branches:
-      - main
+      - desenvolvimento
 
 jobs:
   deploy:
@@ -22,10 +22,10 @@ jobs:
         run: npm ci
 
       - name: Create .env file
-        run: echo "${{ secrets.ENV_PRODUCAO }}" > .env.producao
+        run: echo "${{ secrets.ENV_DESENVOLVIMENTO }}" > .env.desenvolvimento
 
       - name: Build project
-        run: npm run build -- --mode production
+        run: npm run build -- --mode desenvolvimento
 
       - name: Install sshpass
         run: sudo apt-get install -y sshpass    
@@ -34,4 +34,4 @@ jobs:
         env:
           SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }} 
         run: |
-          sshpass -p "$SSH_PASSWORD" rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" ./dist/ rpcuser@177.66.168.178:/var/www/html/solutions/solutions-oficial/playbook-oficial/dist/
+          sshpass -p "$SSH_PASSWORD" rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" ./dist/ rpcuser@177.66.168.178:/var/www/html/solutions/solutions-desenvolvimento/playbook-desenvolvimento/dist/
