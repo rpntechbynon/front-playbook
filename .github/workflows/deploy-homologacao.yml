@@ -32,8 +32,10 @@ jobs:
 
       - name: Deploy to server
         env:
-          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }} 
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
         run: |
+          sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no rpcuser@177.66.168.178 \
+            "mkdir -p /var/www/html/solutions/solutions-hom/playbook-homologacao/dist"
           sshpass -p "$SSH_PASSWORD" rsync -avz --delete --omit-dir-times --no-perms -e "ssh -o StrictHostKeyChecking=no" ./dist/ rpcuser@177.66.168.178:/var/www/html/solutions/solutions-homologacao/playbook-homologacao/dist/
           sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no rpcuser@177.66.168.178 \
             "sudo chown -R rpcuser:rpcuser /var/www/html/solutions/solutions-hom/playbook-homologacao/dist && \
