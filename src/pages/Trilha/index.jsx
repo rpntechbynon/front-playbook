@@ -408,6 +408,19 @@ export default function Trilha() {
   const respondidas = perguntasDoForm.filter(p => respostas[p.id] !== undefined).length;
   const hasFormularios = selectedFormularios.length > 0;
 
+  // Envia as respostas automaticamente assim que todas as perguntas forem respondidas
+  useEffect(() => {
+    if (
+      totalPerguntas > 0 &&
+      respondidas === totalPerguntas &&
+      !respostaEnviada &&
+      !enviandoRespostas
+    ) {
+      enviarRespostas();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [respondidas, totalPerguntas, respostaEnviada, enviandoRespostas]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Menu Superior */}
@@ -546,22 +559,12 @@ export default function Trilha() {
                                 <span className="text-xs text-gray-500">
                                   {respondidas} de {totalPerguntas} respondida{totalPerguntas !== 1 ? 's' : ''}
                                 </span>
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() => setRespostas({})}
-                                    className="px-3 py-1.5 text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors"
-                                  >
-                                    Limpar
-                                  </button>
-                                  <button
-                                    onClick={enviarRespostas}
-                                    disabled={respondidas < totalPerguntas || enviandoRespostas}
-                                    className="px-4 py-1.5 bg-red-500 hover:bg-red-600 text-white font-semibold text-sm rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                  >
-                                    {enviandoRespostas && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                                    Enviar
-                                  </button>
-                                </div>
+                                {enviandoRespostas && (
+                                  <span className="flex items-center gap-1.5 text-xs text-red-500 font-medium">
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    Enviando...
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>
