@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
+import React, { useState, useEffect, useMemo, useImperativeHandle, forwardRef } from "react";
 import { ChevronDown, ChevronRight, BookOpen, Search, X, Loader2, Circle } from "lucide-react";
 import TrilhaService from "../services/TrilhaService";
 
@@ -84,6 +84,26 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
     }));
   };
 
+  // Conjunto de ids do caminho ativo: trilha selecionada + todos os seus pais
+  const activePathIds = useMemo(() => {
+    const path = new Set();
+    const find = (items, parents) => {
+      for (const item of items) {
+        const currentPath = [...parents, item.id];
+        if (item.id === selectedTrilhaId) {
+          currentPath.forEach(id => path.add(id));
+          return true;
+        }
+        if (item.all_children && item.all_children.length > 0) {
+          if (find(item.all_children, currentPath)) return true;
+        }
+      }
+      return false;
+    };
+    if (selectedTrilhaId != null) find(trilhas, []);
+    return path;
+  }, [selectedTrilhaId, trilhas]);
+
   // Hooks devem vir após declaração de todas as funções
   useEffect(() => {
     fetchTrilhas();
@@ -146,6 +166,7 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
     const children = item.all_children || [];
     const hasChildrenItems = children.length > 0;
     const isSelected = selectedTrilhaId === item.id;
+    const isInPath = activePathIds.has(item.id);
 
     return (
       <div key={item.id} id={`trilha-item-${item.id}`}>
@@ -174,8 +195,12 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
 
           {/* Texto */}
           <div className="flex-1 min-w-0">
-            <div className={`text-xs font-medium truncate ${
-              isSelected ? 'text-red-700' : 'text-gray-700'
+            <div className={`text-xs truncate ${
+              isSelected
+                ? 'text-red-700 font-bold'
+                : isInPath
+                  ? 'text-gray-900 font-bold'
+                  : 'text-gray-700 font-medium'
             }`}>
               {searchTerm ? highlightText(item.titulo || item.descricao, searchTerm) : (item.titulo || item.descricao)}
             </div>
