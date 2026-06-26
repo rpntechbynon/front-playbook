@@ -1,13 +1,14 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, Home, UserPlus, TrendingUp, Package, Sparkles } from "lucide-react";
+import { Search, Home, UserPlus, TrendingUp, Package, Sparkles, ClipboardList } from "lucide-react";
 
 export default function MenuSuperior() {
   const location = useLocation();
-  
+
   const menuItems = [
     { path: "/home", label: "Home", icon: Home },
     { path: "/cadastro", label: "Cadastro", icon: UserPlus },
     { path: "/produtos", label: "Produtos", icon: Package },
+    { path: "/formularios", label: "Formulários", icon: ClipboardList },
     { path: "/trilha", label: "Trilha de Vendas", icon: TrendingUp },
     { path: "/tela", label: "PlayBook", icon: Sparkles },
   ];

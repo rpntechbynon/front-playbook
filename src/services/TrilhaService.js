@@ -71,6 +71,13 @@ const TrilhaService = {
 				});
 			}
 			
+			// Adicionar formulários se fornecidos
+			if (dados.formularios && dados.formularios.length > 0) {
+				dados.formularios.forEach((id, index) => {
+					formData.append(`formularios[${index}]`, id);
+				});
+			}
+
 			// Adicionar arquivos se fornecidos
 			if (dados.arquivos && dados.arquivos.length > 0) {
 				console.log('Enviando arquivos:', dados.arquivos.length);
@@ -157,6 +164,13 @@ const TrilhaService = {
 				});
 			}
 			
+			// Adicionar formulários se fornecidos
+			if (dados.formularios && dados.formularios.length > 0) {
+				dados.formularios.forEach((id, index) => {
+					formData.append(`formularios[${index}]`, id);
+				});
+			}
+
 			// Adicionar arquivos (se houver)
 			if (dados.arquivos && dados.arquivos.length > 0) {
 				console.log('Enviando arquivos:', dados.arquivos.length);
@@ -253,14 +267,18 @@ const TrilhaService = {
 				url: doc.url_presignada || doc.caminho,
 				url_presignada: doc.url_presignada
 			})) : [],
+			// Adicionar formulários diretos da decisão
+			formularios: item.formularios || [],
 			// Adicionar submenus na trilha principal também
 			submenus: item.submenus ? item.submenus.map(submenu => ({
 				id: submenu.id,
 				titulo: submenu.titulo,
 				descricao: submenu.descricao,
+				ordem: submenu.ordem,
 				decisao_id: submenu.decisao_id,
 				created_at: submenu.created_at,
 				updated_at: submenu.updated_at,
+				formularios: submenu.formularios || [],
 				documentos: submenu.documentos ? submenu.documentos.map(doc => ({
 					id: doc.id,
 					nome: doc.nome,
@@ -322,14 +340,18 @@ const TrilhaService = {
 				url: doc.url_presignada || doc.caminho,
 				url_presignada: doc.url_presignada
 			})) : [],
+			// Adicionar formulários diretos da etapa
+			formularios: child.formularios || [],
 			// Adicionar submenus
 			submenus: child.submenus ? child.submenus.map(submenu => ({
 				id: submenu.id,
 				titulo: submenu.titulo,
 				descricao: submenu.descricao,
+				ordem: submenu.ordem,
 				decisao_id: submenu.decisao_id,
 				created_at: submenu.created_at,
 				updated_at: submenu.updated_at,
+				formularios: submenu.formularios || [],
 				documentos: submenu.documentos ? submenu.documentos.map(doc => ({
 					id: doc.id,
 					nome: doc.nome,
@@ -369,7 +391,8 @@ const TrilhaService = {
 			id_pai: appData.id_pai || null,
 			go_to: appData.go_to || appData.goTo || null,
 			arquivos: appData.arquivos || [],
-			produtos: appData.produtos || []
+			produtos: appData.produtos || [],
+			formularios: appData.formularios || []
 		};
 
 		return dados;
@@ -394,14 +417,15 @@ const TrilhaService = {
 			titulo: etapa.titulo || null,
 			go_to: goToValue,
 			arquivos: arquivosNovos,
-			produtos: etapa.produtos || []
+			produtos: etapa.produtos || [],
+			formularios: etapa.formularios || []
 		};
 
 		// Adicionar ordem se fornecido (aceita 0)
 		if (etapa.ordem !== null && etapa.ordem !== undefined) {
 			dados.ordem = etapa.ordem;
 		}
-		
+
 		// Adicionar documentos_manter se fornecido
 		if (etapa.documentos_manter && etapa.documentos_manter.length > 0) {
 			dados.documentos_manter = etapa.documentos_manter;

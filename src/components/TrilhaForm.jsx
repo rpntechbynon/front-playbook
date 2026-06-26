@@ -1,9 +1,9 @@
 import React from "react";
-import { Plus, Upload, X, Image, FileText, CheckSquare, Square, AlertCircle, Hash, Maximize2, Trash2, Loader2 } from "lucide-react";
+import { Plus, Upload, X, Image, FileText, CheckSquare, Square, AlertCircle, Hash, Maximize2, Trash2, Loader2, ClipboardList } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
-export default function TrilhaForm({ 
-	titulo, 
+export default function TrilhaForm({
+	titulo,
 	setTitulo,
 	descricao,
 	setDescricao,
@@ -15,7 +15,11 @@ export default function TrilhaForm({
 	setGoToSelecionados,
 	decisoesDisponiveis = [],
 	loadingDecisoes = false,
-	onSave, 
+	formulariosSelecionados = [],
+	setFormulariosSelecionados,
+	formulariosDisponiveis = [],
+	loadingFormularios = false,
+	onSave,
 	onCancel,
 	isEditing = false,
 	isSaving = false,
@@ -156,6 +160,66 @@ export default function TrilhaForm({
 					</p>
 				)}
 			</div>
+
+			{/* Formulários */}
+			{setFormulariosSelecionados && (
+				<div className="mb-6">
+					<label className={`block font-semibold mb-2 flex items-center gap-2 ${theme.text.secondary}`}>
+						<ClipboardList className="w-4 h-4" />
+						Formulários (opcional)
+					</label>
+					<p className={`text-xs mb-3 ${theme.text.tertiary}`}>
+						Associe formulários de Sim/Não a esta decisão
+					</p>
+
+					{formulariosSelecionados.length > 0 && (
+						<div className="mb-2 space-y-1">
+							{formulariosSelecionados.map((formId) => {
+								const form = formulariosDisponiveis.find(f => f.id === formId);
+								return (
+									<div key={formId} className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-sm ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-gray-50 border-gray-300'}`}>
+										<span className={`font-semibold truncate flex-1 ${theme.text.primary}`}>{form?.titulo || `Formulário #${formId}`}</span>
+										<button
+											type="button"
+											onClick={() => setFormulariosSelecionados(formulariosSelecionados.filter(id => id !== formId))}
+											className={`p-1 rounded flex-shrink-0 ${isDarkMode ? 'hover:bg-red-600/20 text-red-400' : 'hover:bg-red-100 text-red-600'}`}
+											disabled={isSaving}
+										>
+											<X className="w-3.5 h-3.5" />
+										</button>
+									</div>
+								);
+							})}
+						</div>
+					)}
+
+					<select
+						value=""
+						onChange={(e) => {
+							if (e.target.value) {
+								setFormulariosSelecionados([...formulariosSelecionados, parseInt(e.target.value)]);
+							}
+						}}
+						className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${theme.bg.input} ${theme.border.input} ${theme.text.primary} ${isDarkMode ? 'focus:border-blue-500 focus:ring-blue-500/50' : 'focus:border-gray-600 focus:ring-gray-400'}`}
+						disabled={isSaving || loadingFormularios}
+					>
+						<option value="">+ Adicionar formulário</option>
+						{formulariosDisponiveis
+							.filter(f => !formulariosSelecionados.includes(f.id))
+							.map((form) => (
+								<option key={form.id} value={form.id}>
+									{form.titulo}{form.descricao ? ` — ${form.descricao}` : ''}
+								</option>
+							))}
+					</select>
+
+					{formulariosSelecionados.length > 0 && (
+						<p className={`text-xs mt-2 font-medium ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+							{formulariosSelecionados.length} formulário(s) associado(s)
+						</p>
+					)}
+				</div>
+			)}
 
 			{/* Seção Destacada: Documentos Existentes */}
 			{isEditing && arquivos.filter(a => !(a instanceof File)).length > 0 && (

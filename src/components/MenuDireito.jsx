@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { MapPin, ExternalLink, ChevronRight, Layers, Navigation, Info, Package, CheckSquare, Image, FileText, X } from "lucide-react";
+import { MapPin, ExternalLink, ChevronRight, Layers, Navigation, Info, Package, CheckSquare, Image, FileText, X, ClipboardList } from "lucide-react";
 import TrilhaService from "../services/TrilhaService";
 
-export default function MenuDireito({ selectedTrilha, onSelectDestination, isMinimized, onToggleMinimize, onSelectSubmenuImages }) {
+export default function MenuDireito({ selectedTrilha, onSelectDestination, isMinimized, onToggleMinimize, onSelectSubmenuImages, onSelectSubmenuFormularios }) {
   const [allTrilhas, setAllTrilhas] = useState([]);
   const [selectedDestinationId, setSelectedDestinationId] = useState(null);
   const [tooltipProdutoId, setTooltipProdutoId] = useState(null);
@@ -209,14 +209,17 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
               const cardClasses = getCardClasses();
               
               // Verificar se o submenu tem imagens
-              const imagensSubmenu = submenu.documentos?.filter(doc => 
+              const imagensSubmenu = submenu.documentos?.filter(doc =>
                 doc.tipo?.startsWith('image/') || doc.nome?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
               ) || [];
               const hasImages = imagensSubmenu.length > 0;
-              
-              // Função para clicar no card e exibir as imagens
+              const hasFormulariosSubmenu = (submenu.formularios?.length || 0) > 0;
+              const isClickable = hasFormulariosSubmenu || hasImages;
+
               const handleSubmenuClick = () => {
-                if (hasImages && onSelectSubmenuImages) {
+                if (hasFormulariosSubmenu && onSelectSubmenuFormularios) {
+                  onSelectSubmenuFormularios(submenu.formularios);
+                } else if (hasImages && onSelectSubmenuImages) {
                   onSelectSubmenuImages(imagensSubmenu, 0);
                 }
               };
@@ -225,7 +228,7 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
                 <div
                   key={submenu.id}
                   onClick={handleSubmenuClick}
-                  className={`${cardClasses.bg} border ${cardClasses.border} rounded-lg p-3 shadow-sm transition-all ${cardClasses.hover} ${hasImages ? 'cursor-pointer' : ''}`}
+                  className={`${cardClasses.bg} border ${cardClasses.border} rounded-lg p-3 shadow-sm transition-all ${cardClasses.hover} ${isClickable ? 'cursor-pointer' : ''}`}
                 >
                   <div className="flex items-start gap-2">
                     {/* Ícone */}
@@ -237,6 +240,12 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-1">
                         <span className="text-[10px] font-bold text-gray-500">Ordem: {submenu.ordem}</span>
+                        {hasFormulariosSubmenu && (
+                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-red-100 text-red-700">
+                            <ClipboardList className="w-2.5 h-2.5" />
+                            {submenu.formularios.length}
+                          </span>
+                        )}
                         {hasImages && (
                           <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-blue-100 text-blue-700">
                             <Image className="w-2.5 h-2.5" />

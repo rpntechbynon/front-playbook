@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import MenuSuperior from "../MenuSuperior";
 import MenuLateral from "../../components/Menulateral";
 import MenuDireito from "../../components/MenuDireito";
-import { FileText, Image as ImageIcon, Download, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { FileText, Image as ImageIcon, Download, ChevronLeft, ChevronRight, Loader2, ClipboardList, CheckCircle } from "lucide-react";
 import API_BASE_URL from "../../config/api";
 
 // Componente otimizado para miniaturas com Intersection Observer
@@ -81,6 +81,12 @@ export default function Trilha() {
   const loadTimeoutRef = useRef(null);
   const highResImageRef = useRef(null);
 
+  const [selectedFormularios, setSelectedFormularios] = useState([]);
+  const [activeFormIndex, setActiveFormIndex] = useState(0);
+  const [respostas, setRespostas] = useState({});
+  const [enviandoRespostas, setEnviandoRespostas] = useState(false);
+  const [respostaEnviada, setRespostaEnviada] = useState(false);
+
   // Função otimizada para pré-carregar imagens
   const preloadImage = useCallback((url) => {
     if (!url || loadedImages.has(url) || imageCache.current.has(url)) return Promise.resolve();
@@ -99,17 +105,21 @@ export default function Trilha() {
 
   const handleSelectTrilha = (trilha) => {
     const isSameTrilha = selectedTrilha?.id === trilha?.id;
-    
+
     setSelectedTrilha(trilha);
     setSelectedAttachmentIndex(0);
     setSelectedSubmenuImages([]);
     setCurrentSubmenuImageIndex(0);
-    
+    setSelectedFormularios(trilha?.formularios || []);
+    setActiveFormIndex(0);
+    setRespostas({});
+    setRespostaEnviada(false);
+
     if (!isSameTrilha) {
       setIsImageLoading(true);
       setHighResLoaded(false);
     }
-    
+
     if (trilha?.go_to) {
       setIsMenuDireitoMinimized(false);
     }
@@ -117,16 +127,20 @@ export default function Trilha() {
 
   const handleSelectDestination = (destination) => {
     const isSameDestination = selectedTrilha?.id === destination?.id;
-    
+
     setSelectedTrilha(destination);
     setSelectedSubmenuImages([]);
     setCurrentSubmenuImageIndex(0);
-    
+    setSelectedFormularios(destination?.formularios || []);
+    setActiveFormIndex(0);
+    setRespostas({});
+    setRespostaEnviada(false);
+
     if (!isSameDestination) {
       setIsImageLoading(true);
       setHighResLoaded(false);
     }
-    
+
     if (menuLateralRef.current) {
       menuLateralRef.current.selectTrilha(destination.id);
     }
@@ -147,17 +161,26 @@ export default function Trilha() {
   };
 
   const handleSelectSubmenuImages = (images, startIndex = 0) => {
-    const areSameImages = selectedSubmenuImages.length === images.length && 
+    const areSameImages = selectedSubmenuImages.length === images.length &&
                           selectedSubmenuImages.length > 0 &&
                           selectedSubmenuImages[0]?.id === images[0]?.id;
-    
+
     setSelectedSubmenuImages(images);
     setCurrentSubmenuImageIndex(startIndex);
-    
+    setSelectedFormularios([]);
+
     if (!areSameImages) {
       setIsImageLoading(true);
       setHighResLoaded(false);
     }
+  };
+
+  const handleSelectSubmenuFormularios = (formularios) => {
+    setSelectedFormularios(formularios);
+    setSelectedSubmenuImages([]);
+    setActiveFormIndex(0);
+    setRespostas({});
+    setRespostaEnviada(false);
   };
 
   const getAllDocuments = useCallback(() => {
@@ -191,6 +214,28 @@ export default function Trilha() {
     
     return allDocs;
   }, [selectedTrilha]);
+
+  const enviarRespostas = async () => {
+    const formAtivo = selectedFormularios[activeFormIndex];
+    if (!formAtivo) return;
+
+    const perguntas = [...(formAtivo.perguntas || [])].sort((a, b) => a.ordem - b.ordem);
+    const respostasArray = perguntas.map(p => ({ pergunta_id: p.id, valor: respostas[p.id] }));
+
+    setEnviandoRespostas(true);
+    try {
+      await fetch(`${API_BASE_URL}/formularios/${formAtivo.id}/respostas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ respostas: respostasArray }),
+      });
+      setRespostaEnviada(true);
+    } catch (e) {
+      console.error('Erro ao enviar respostas:', e);
+    } finally {
+      setEnviandoRespostas(false);
+    }
+  };
 
   const allDocuments = getAllDocuments();
   const hasAttachments = allDocuments.length > 0;
@@ -357,6 +402,12 @@ export default function Trilha() {
     };
   }, []);
 
+  const formAtivo = selectedFormularios[activeFormIndex] ?? null;
+  const perguntasDoForm = [...(formAtivo?.perguntas || [])].sort((a, b) => a.ordem - b.ordem);
+  const totalPerguntas = perguntasDoForm.length;
+  const respondidas = perguntasDoForm.filter(p => respostas[p.id] !== undefined).length;
+  const hasFormularios = selectedFormularios.length > 0;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Menu Superior */}
@@ -368,11 +419,12 @@ export default function Trilha() {
         <MenuLateral ref={menuLateralRef} onSelectTrilha={handleSelectTrilha} />
         
         {/* Menu Direito */}
-        <MenuDireito 
-          selectedTrilha={selectedTrilha} 
+        <MenuDireito
+          selectedTrilha={selectedTrilha}
           onSelectDestination={handleSelectDestination}
           onSelectSubmenuDocument={handleSelectSubmenuDocument}
           onSelectSubmenuImages={handleSelectSubmenuImages}
+          onSelectSubmenuFormularios={handleSelectSubmenuFormularios}
           isMinimized={isMenuDireitoMinimized}
           onToggleMinimize={() => setIsMenuDireitoMinimized(!isMenuDireitoMinimized)}
         />
@@ -381,9 +433,143 @@ export default function Trilha() {
         <main className="h-[calc(100vh-3.5rem)] overflow-hidden flex flex-col bg-white">
           {selectedTrilha ? (
             <>
-              {/* Área de Anexos */}
+              {/* Área de Conteúdo */}
               <div className="flex-1 overflow-hidden flex flex-col">
-                {imagesToDisplay.length > 0 ? (
+                {hasFormularios ? (
+                  <div className="flex-1 overflow-hidden flex flex-col">
+                    {/* Abas quando há múltiplos formulários */}
+                    {selectedFormularios.length > 1 && (
+                      <div className="border-b border-gray-200 flex overflow-x-auto flex-shrink-0 bg-white">
+                        {selectedFormularios.map((f, i) => (
+                          <button
+                            key={f.id}
+                            onClick={() => { setActiveFormIndex(i); setRespostas({}); setRespostaEnviada(false); }}
+                            className={`px-3 py-2 text-xs font-medium border-b-2 whitespace-nowrap transition-colors ${
+                              i === activeFormIndex
+                                ? 'border-red-500 text-red-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            }`}
+                          >
+                            {f.titulo}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex-1 overflow-y-auto">
+                      {formAtivo && (
+                        respostaEnviada ? (
+                          /* Estado de sucesso */
+                          <div className="flex flex-col items-center justify-center min-h-full p-6 text-center">
+                            <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mb-3">
+                              <CheckCircle className="w-6 h-6 text-green-500" />
+                            </div>
+                            <h3 className="text-base font-bold text-gray-800 mb-1">Respostas enviadas!</h3>
+                            <p className="text-gray-500 text-xs mb-5">Atendimento registrado com sucesso.</p>
+                            <div className="w-full max-w-md space-y-1.5 mb-5 text-left">
+                              {perguntasDoForm.map(p => (
+                                <div
+                                  key={p.id}
+                                  className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm border ${
+                                    respostas[p.id] === true
+                                      ? 'bg-green-50 border-green-200'
+                                      : 'bg-red-50 border-red-200'
+                                  }`}
+                                >
+                                  <span className={`text-xs font-bold flex-shrink-0 w-7 ${respostas[p.id] === true ? 'text-green-600' : 'text-red-500'}`}>
+                                    {respostas[p.id] === true ? 'Sim' : 'Não'}
+                                  </span>
+                                  <span className="text-gray-600 text-xs">{p.texto}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <button
+                              onClick={() => { setRespostas({}); setRespostaEnviada(false); }}
+                              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium text-sm rounded-md transition-colors"
+                            >
+                              Responder Novamente
+                            </button>
+                          </div>
+                        ) : (
+                          /* Formulário de perguntas */
+                          <div className="p-5 max-w-xl mx-auto w-full">
+                            <div className="flex items-center gap-2.5 mb-4">
+                              <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <ClipboardList className="w-4 h-4 text-red-500" />
+                              </div>
+                              <div className="min-w-0">
+                                <h2 className="text-sm font-bold text-gray-800 truncate">{formAtivo.titulo}</h2>
+                                {formAtivo.descricao && (
+                                  <p className="text-gray-500 text-xs mt-0.5">{formAtivo.descricao}</p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              {perguntasDoForm.map((p, i) => {
+                                const resposta = respostas[p.id];
+                                return (
+                                  <div key={p.id} className="border border-gray-200 rounded-lg p-3">
+                                    <p className="text-sm text-gray-700 mb-2.5 flex items-start gap-2">
+                                      <span className="text-xs font-bold text-gray-400 flex-shrink-0 mt-0.5">{i + 1}.</span>
+                                      <span className="flex-1">{p.texto}</span>
+                                    </p>
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => setRespostas(prev => ({ ...prev, [p.id]: true }))}
+                                        className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                                          resposta === true
+                                            ? 'bg-green-500 text-white'
+                                            : 'bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100'
+                                        }`}
+                                      >
+                                        Sim
+                                      </button>
+                                      <button
+                                        onClick={() => setRespostas(prev => ({ ...prev, [p.id]: false }))}
+                                        className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                                          resposta === false
+                                            ? 'bg-red-500 text-white'
+                                            : 'bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100'
+                                        }`}
+                                      >
+                                        Não
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {totalPerguntas > 0 && (
+                              <div className="mt-5 pt-3 border-t border-gray-200 flex items-center justify-between gap-3">
+                                <span className="text-xs text-gray-500">
+                                  {respondidas} de {totalPerguntas} respondida{totalPerguntas !== 1 ? 's' : ''}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => setRespostas({})}
+                                    className="px-3 py-1.5 text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors"
+                                  >
+                                    Limpar
+                                  </button>
+                                  <button
+                                    onClick={enviarRespostas}
+                                    disabled={respondidas < totalPerguntas || enviandoRespostas}
+                                    className="px-4 py-1.5 bg-red-500 hover:bg-red-600 text-white font-semibold text-sm rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                  >
+                                    {enviandoRespostas && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                                    Enviar
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                ) : imagesToDisplay.length > 0 ? (
                   <>
                     {/* Visualizador de Imagens */}
                     <div 

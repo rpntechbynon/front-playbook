@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import MenuSuperior from "../MenuSuperior";
-import { Plus, Loader2, AlertCircle, FileText, Grid3x3, List, Search, Upload, X, Image as ImageIcon, Package, CheckSquare, Square, ArrowUp, ArrowDown, GripVertical, Hash } from "lucide-react";
+import { Plus, Loader2, AlertCircle, FileText, Grid3x3, List, Search, Upload, X, Image as ImageIcon, Package, CheckSquare, Square, ArrowUp, ArrowDown, GripVertical, Hash, ClipboardList } from "lucide-react";
+import FormularioService from "../../services/FormularioService";
 import { useTrilhas } from "../../hooks/useTrilhas";
 import { useTheme } from "../../contexts/ThemeContext";
 import TrilhaForm from "../../components/TrilhaForm";
@@ -35,6 +36,7 @@ export default function Cadastro() {
 	const [descricao, setDescricao] = useState("");
 	const [ordem, setOrdem] = useState(null);
 	const [goToSelecionados, setGoToSelecionados] = useState([]);
+	const [formulariosTrilha, setFormulariosTrilha] = useState([]);
 	const [isEditingTrilha, setIsEditingTrilha] = useState(false);
 	const [trilhaEditId, setTrilhaEditId] = useState(null);
 	const [viewMode, setViewMode] = useState('grid');
@@ -50,7 +52,7 @@ export default function Cadastro() {
 
 	// Estados para etapas
 	const [showEtapaForm, setShowEtapaForm] = useState(false);
-	const [novaEtapa, setNovaEtapa] = useState({ trilhaId: null, parentId: null, titulo: "", descricao: "", ordem: null, arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null });
+	const [novaEtapa, setNovaEtapa] = useState({ trilhaId: null, parentId: null, titulo: "", descricao: "", ordem: null, arquivos: [], goTo: [], produtos: [], formularios: [], isEdit: false, etapaId: null });
 	const [salvandoEtapa, setSalvandoEtapa] = useState(false);
 	const [showDeleteEtapaModal, setShowDeleteEtapaModal] = useState(false);
 	const [etapaToDelete, setEtapaToDelete] = useState(null);
@@ -60,7 +62,7 @@ export default function Cadastro() {
 
 	// Estados para submenus
 	const [showSubmenuForm, setShowSubmenuForm] = useState(false);
-	const [submenuData, setSubmenuData] = useState({ etapaId: null, titulo: "", descricao: "", arquivos: [], produtos: [], isEdit: false, submenuId: null });
+	const [submenuData, setSubmenuData] = useState({ etapaId: null, titulo: "", descricao: "", arquivos: [], produtos: [], formularios: [], isEdit: false, submenuId: null });
 	const [salvandoSubmenu, setSalvandoSubmenu] = useState(false);
 
 	// Dados auxiliares
@@ -68,6 +70,8 @@ export default function Cadastro() {
 	const [loadingDecisoes, setLoadingDecisoes] = useState(false);
 	const [produtosDisponiveis, setProdutosDisponiveis] = useState([]);
 	const [loadingProdutos, setLoadingProdutos] = useState(false);
+	const [formulariosDisponiveis, setFormulariosDisponiveis] = useState([]);
+	const [loadingFormularios, setLoadingFormularios] = useState(false);
 
 	// Função para resetar o formulário
 	const resetarFormulario = () => {
@@ -75,6 +79,7 @@ export default function Cadastro() {
 		setDescricao("");
 		setOrdem(null);
 		setGoToSelecionados([]);
+		setFormulariosTrilha([]);
 		setArquivos([]);
 		setIsEditingTrilha(false);
 		setTrilhaEditId(null);
@@ -150,6 +155,21 @@ export default function Cadastro() {
 		buscarProdutos();
 	}, []);
 
+	useEffect(() => {
+		const buscarFormularios = async () => {
+			try {
+				setLoadingFormularios(true);
+				const data = await FormularioService.listar();
+				setFormulariosDisponiveis(data);
+			} catch (err) {
+				console.error('Erro ao buscar formulários:', err);
+			} finally {
+				setLoadingFormularios(false);
+			}
+		};
+		buscarFormularios();
+	}, []);
+
 	const toggleNode = (nodeId) => {
 		setExpandedNodes(prev => ({
 			...prev,
@@ -170,6 +190,7 @@ export default function Cadastro() {
 		setDescricao(trilha.descricao || "");
 		setOrdem(trilha.ordem || null);
 		setGoToSelecionados(trilha.goTo ? trilha.goTo.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : []);
+		setFormulariosTrilha(trilha.formularios ? trilha.formularios.map(f => typeof f === 'object' ? f.id : f) : []);
 		setArquivos(trilha.documentos || []);
 		setIsEditingTrilha(true);
 		setTrilhaEditId(trilhaId);
@@ -190,14 +211,19 @@ export default function Cadastro() {
 				descricao: descricao.trim(),
 				ordem: ordem || null,
 				go_to: goToSelecionados.length > 0 ? goToSelecionados.join(',') : null,
+				formularios: formulariosTrilha,
 				arquivos: arquivos.filter(a => a instanceof File)
 			};
 
 			if (isEditingTrilha) {
 				await atualizarTrilha(trilhaEditId, dados, arquivos.filter(a => a instanceof File));
+				await FormularioService.sincronizarFormulariosDecisao(trilhaEditId, formulariosTrilha);
 				setToast({ message: "Trilha atualizada com sucesso!", type: "success" });
 			} else {
-				await adicionarTrilha(dados);
+				const trilhaCriada = await adicionarTrilha(dados);
+				if (trilhaCriada?.id && formulariosTrilha.length > 0) {
+					await FormularioService.sincronizarFormulariosDecisao(trilhaCriada.id, formulariosTrilha);
+				}
 				setToast({ message: "Trilha cadastrada com sucesso!", type: "success" });
 			}
 
@@ -261,13 +287,24 @@ export default function Cadastro() {
 		setShowEtapaForm(true);
 	};
 
-	const handleEditEtapa = (trilhaId, etapa) => {
+	const handleEditEtapa = async (trilhaId, etapa) => {
 		const goToArray = etapa.goTo ? etapa.goTo.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
 		const produtosArray = etapa.produtos ? etapa.produtos.map((p, index) => ({
 			produto_id: p.produto_id || p.id,
 			recomendado: p.recomendado || false,
 			ordem: p.ordem || index
 		})) : [];
+
+		let formulariosArray = etapa.formularios
+			? etapa.formularios.map(f => typeof f === 'object' ? f.id : f)
+			: [];
+
+		try {
+			const formulariosAtuais = await FormularioService.listarPorDecisao(etapa.id);
+			formulariosArray = formulariosAtuais.map(f => f.id);
+		} catch {
+			// mantém o fallback acima
+		}
 
 		setNovaEtapa({
 			trilhaId,
@@ -278,6 +315,7 @@ export default function Cadastro() {
 			arquivos: etapa.anexos || [],
 			goTo: goToArray,
 			produtos: produtosArray,
+			formularios: formulariosArray,
 			isEdit: true,
 			etapaId: etapa.id
 		});
@@ -307,6 +345,7 @@ export default function Cadastro() {
 					titulo: novaEtapa.titulo,
 					ordem: novaEtapa.ordem,
 					produtos: novaEtapa.produtos || [],
+					formularios: novaEtapa.formularios || [],
 					documentos_manter: documentosExistentes.filter(doc => doc.id).map(doc => doc.id)
 				};
 
@@ -315,8 +354,9 @@ export default function Cadastro() {
 				}
 
 				await atualizarTrilha(novaEtapa.etapaId, dadosAtualizacao, arquivosNovos);
+				await FormularioService.sincronizarFormulariosDecisao(novaEtapa.etapaId, novaEtapa.formularios || []);
 				setShowEtapaForm(false);
-				setNovaEtapa({ trilhaId: null, parentId: null, titulo: "", descricao: "", ordem: null, arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null });
+				setNovaEtapa({ trilhaId: null, parentId: null, titulo: "", descricao: "", ordem: null, arquivos: [], goTo: [], produtos: [], formularios: [], isEdit: false, etapaId: null });
 				setToast({ message: "Etapa atualizada com sucesso!", type: "success" });
 				return;
 			}
@@ -330,17 +370,21 @@ export default function Cadastro() {
 				ordem: novaEtapa.ordem,
 				id_pai: idPai,
 				arquivos: arquivosNovos,
-				produtos: novaEtapa.produtos || []
+				produtos: novaEtapa.produtos || [],
+				formularios: novaEtapa.formularios || []
 			};
 
 			if (novaEtapa.parentId === null) {
 				novoDado.go_to = novaEtapa.goTo && novaEtapa.goTo.length > 0 ? novaEtapa.goTo.join(',') : '';
 			}
 
-			await adicionarTrilha(novoDado);
+			const etapaCriada = await adicionarTrilha(novoDado);
+			if (etapaCriada?.id && novaEtapa.formularios?.length > 0) {
+				await FormularioService.sincronizarFormulariosDecisao(etapaCriada.id, novaEtapa.formularios);
+			}
 
 			setShowEtapaForm(false);
-			setNovaEtapa({ trilhaId: null, parentId: null, titulo: "", descricao: "", ordem: null, arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null });
+			setNovaEtapa({ trilhaId: null, parentId: null, titulo: "", descricao: "", ordem: null, arquivos: [], goTo: [], produtos: [], formularios: [], isEdit: false, etapaId: null });
 			setErrosArquivosEtapa([]);
 			setToast({ message: "Etapa adicionada com sucesso!", type: "success" });
 
@@ -397,12 +441,23 @@ export default function Cadastro() {
 		setShowSubmenuForm(true);
 	};
 
-	const handleEditSubmenu = (etapaId, submenu) => {
+	const handleEditSubmenu = async (etapaId, submenu) => {
 		const produtosArray = submenu.produtos ? submenu.produtos.map((p, index) => ({
 			produto_id: p.produto_id || p.id,
 			recomendado: p.recomendado || false,
 			ordem: p.ordem || index
 		})) : [];
+
+		let formulariosArray = submenu.formularios
+			? submenu.formularios.map(f => typeof f === 'object' ? f.id : f)
+			: [];
+
+		try {
+			const formulariosAtuais = await FormularioService.listarPorSubmenu(submenu.id);
+			formulariosArray = formulariosAtuais.map(f => f.id);
+		} catch {
+			// mantém o fallback acima
+		}
 
 		setSubmenuData({
 			etapaId,
@@ -410,6 +465,7 @@ export default function Cadastro() {
 			descricao: submenu.descricao,
 			arquivos: submenu.anexos || [],
 			produtos: produtosArray,
+			formularios: formulariosArray,
 			isEdit: true,
 			submenuId: submenu.id
 		});
@@ -441,10 +497,6 @@ export default function Cadastro() {
 			setSalvandoSubmenu(true);
 			const formData = new FormData();
 
-			if (submenuData.isEdit) {
-				formData.append('_method', 'PUT');
-			}
-
 			formData.append('decisao_id', submenuData.etapaId);
 			formData.append('titulo', submenuData.titulo);
 			formData.append('descricao', submenuData.descricao || '');
@@ -456,6 +508,10 @@ export default function Cadastro() {
 					formData.append(`produtos[${index}][ordem]`, produto.ordem || index);
 				});
 			}
+
+			(submenuData.formularios || []).forEach((id, index) => {
+				formData.append(`formularios[${index}]`, id);
+			});
 
 			const arquivosNovos = submenuData.arquivos.filter(a => a instanceof File);
 			arquivosNovos.forEach(arquivo => formData.append('arquivos[]', arquivo));
@@ -474,8 +530,13 @@ export default function Cadastro() {
 			const response = await fetch(url, { method: 'POST', body: formData });
 			if (!response.ok) throw new Error('Erro ao salvar submenu');
 
+			const saved = await response.json();
+			const submenuId = submenuData.isEdit ? submenuData.submenuId : saved.id;
+
+			await FormularioService.sincronizarFormulariosSubmenu(submenuId, submenuData.formularios || []);
+
 			setShowSubmenuForm(false);
-			setSubmenuData({ etapaId: null, titulo: "", descricao: "", arquivos: [], produtos: [], isEdit: false, submenuId: null });
+			setSubmenuData({ etapaId: null, titulo: "", descricao: "", arquivos: [], produtos: [], formularios: [], isEdit: false, submenuId: null });
 			await carregarTrilhas();
 			setToast({ message: submenuData.isEdit ? "Submenu atualizado com sucesso!" : "Submenu adicionado com sucesso!", type: "success" });
 		} catch (error) {
@@ -647,6 +708,10 @@ export default function Cadastro() {
 								setGoToSelecionados={setGoToSelecionados}
 								decisoesDisponiveis={[]}
 								loadingDecisoes={false}
+								formulariosSelecionados={formulariosTrilha}
+								setFormulariosSelecionados={setFormulariosTrilha}
+								formulariosDisponiveis={formulariosDisponiveis}
+								loadingFormularios={loadingFormularios}
 								onSave={salvarTrilha}
 								onCancel={() => {
 									setShowForm(false);
@@ -927,6 +992,51 @@ export default function Cadastro() {
 										</select>
 									</div>
 
+									<div>
+										<label className={`block font-semibold mb-2 text-sm ${theme.text.secondary} flex items-center gap-2`}>
+											<ClipboardList className="w-4 h-4" />
+											Formulários
+										</label>
+										{novaEtapa.formularios.length > 0 && (
+											<div className="mb-2 space-y-1">
+												{novaEtapa.formularios.map((formId) => {
+													const form = formulariosDisponiveis.find(f => f.id === formId);
+													return (
+														<div key={formId} className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-xs ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-gray-50 border-gray-300'}`}>
+															<span className={`font-semibold truncate flex-1 ${theme.text.primary}`}>{form?.titulo || `Formulário #${formId}`}</span>
+															<button
+																onClick={() => setNovaEtapa({ ...novaEtapa, formularios: novaEtapa.formularios.filter(id => id !== formId) })}
+																className={`p-1 rounded flex-shrink-0 ${isDarkMode ? 'hover:bg-red-600/20 text-red-400' : 'hover:bg-red-100 text-red-600'}`}
+																disabled={salvandoEtapa}
+															>
+																<X className="w-3 h-3" />
+															</button>
+														</div>
+													);
+												})}
+											</div>
+										)}
+										<select
+											value=""
+											onChange={(e) => {
+												if (e.target.value) {
+													setNovaEtapa({ ...novaEtapa, formularios: [...novaEtapa.formularios, parseInt(e.target.value)] });
+												}
+											}}
+											className={`w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:border-red-300 focus:ring-red-100 ${theme.bg.input} ${theme.border.input} ${theme.text.primary} transition-all`}
+											disabled={salvandoEtapa || loadingFormularios}
+										>
+											<option value="">+ Adicionar formulário</option>
+											{formulariosDisponiveis
+												.filter(f => !novaEtapa.formularios.includes(f.id))
+												.map((form) => (
+													<option key={form.id} value={form.id}>
+														{form.titulo}{form.descricao ? ` — ${form.descricao}` : ''}
+													</option>
+												))}
+										</select>
+									</div>
+
 									{!novaEtapa.parentId && (
 										<div>
 											<label className={`block font-semibold mb-2 text-sm ${theme.text.secondary} flex items-center gap-2`}>
@@ -1121,7 +1231,7 @@ export default function Cadastro() {
 										)}
 									</button>
 									<button
-										onClick={() => { setShowEtapaForm(false); setNovaEtapa({ trilhaId: null, parentId: null, titulo: "", descricao: "", ordem: null, arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null }); }}
+										onClick={() => { setShowEtapaForm(false); setNovaEtapa({ trilhaId: null, parentId: null, titulo: "", descricao: "", ordem: null, arquivos: [], goTo: [], produtos: [], formularios: [], isEdit: false, etapaId: null }); }}
 										disabled={salvandoEtapa}
 										className={`px-4 py-2 font-semibold rounded-xl ${theme.bg.button} ${theme.text.secondary} ${theme.hover} transition-all disabled:opacity-50`}
 									>
@@ -1271,6 +1381,51 @@ export default function Cadastro() {
 
 									<div>
 										<label className={`block font-semibold mb-2 text-sm ${theme.text.secondary} flex items-center gap-2`}>
+											<ClipboardList className="w-4 h-4" />
+											Formulários
+										</label>
+										{submenuData.formularios.length > 0 && (
+											<div className="mb-2 space-y-1">
+												{submenuData.formularios.map((formId) => {
+													const form = formulariosDisponiveis.find(f => f.id === formId);
+													return (
+														<div key={formId} className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-xs ${isDarkMode ? 'bg-slate-800/50 border-slate-600' : 'bg-gray-50 border-gray-300'}`}>
+															<span className={`font-semibold truncate flex-1 ${theme.text.primary}`}>{form?.titulo || `Formulário #${formId}`}</span>
+															<button
+																onClick={() => setSubmenuData({ ...submenuData, formularios: submenuData.formularios.filter(id => id !== formId) })}
+																className={`p-1 rounded flex-shrink-0 ${isDarkMode ? 'hover:bg-red-600/20 text-red-400' : 'hover:bg-red-100 text-red-600'}`}
+																disabled={salvandoSubmenu}
+															>
+																<X className="w-3 h-3" />
+															</button>
+														</div>
+													);
+												})}
+											</div>
+										)}
+										<select
+											value=""
+											onChange={(e) => {
+												if (e.target.value) {
+													setSubmenuData({ ...submenuData, formularios: [...submenuData.formularios, parseInt(e.target.value)] });
+												}
+											}}
+											className={`w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:border-red-300 focus:ring-red-100 ${theme.bg.input} ${theme.border.input} ${theme.text.primary} transition-all`}
+											disabled={salvandoSubmenu || loadingFormularios}
+										>
+											<option value="">+ Adicionar formulário</option>
+											{formulariosDisponiveis
+												.filter(f => !submenuData.formularios.includes(f.id))
+												.map((form) => (
+													<option key={form.id} value={form.id}>
+														{form.titulo}{form.descricao ? ` — ${form.descricao}` : ''}
+													</option>
+												))}
+										</select>
+									</div>
+
+									<div>
+										<label className={`block font-semibold mb-2 text-sm ${theme.text.secondary} flex items-center gap-2`}>
 											<Upload className="w-4 h-4" />
 											Fotos/Anexos
 										</label>
@@ -1368,7 +1523,7 @@ export default function Cadastro() {
 										)}
 									</button>
 									<button
-										onClick={() => { setShowSubmenuForm(false); setSubmenuData({ etapaId: null, titulo: "", descricao: "", arquivos: [], produtos: [], isEdit: false, submenuId: null }); }}
+										onClick={() => { setShowSubmenuForm(false); setSubmenuData({ etapaId: null, titulo: "", descricao: "", arquivos: [], produtos: [], formularios: [], isEdit: false, submenuId: null }); }}
 										disabled={salvandoSubmenu}
 										className={`px-4 py-2 font-semibold rounded-xl ${theme.bg.button} ${theme.text.secondary} ${theme.hover} transition-all disabled:opacity-50`}
 									>

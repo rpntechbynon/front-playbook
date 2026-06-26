@@ -4,6 +4,7 @@ import Cadastro from './pages/Cadastro';
 import Trilha from './pages/Trilha';
 import Produtos from './pages/Produtos';
 import Tela from './pages/Tela';
+import Formularios from './pages/Formularios';
 
 function AppRouter() {
   return (
@@ -15,6 +16,7 @@ function AppRouter() {
         <Route path="/trilha" element={<Trilha />} />
         <Route path="/produtos" element={<Produtos />} />
         <Route path="/tela" element={<Tela />} />
+        <Route path="/formularios" element={<Formularios />} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </Router>
