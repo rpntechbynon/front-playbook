@@ -25,7 +25,7 @@ jobs:
         run: echo "${{ secrets.ENV_PRODUCAO }}" > .env.producao
 
       - name: Build project
-        run: npm run build -- --mode production
+        run: npm run build
 
       - name: Install sshpass
         run: sudo apt-get install -y sshpass    
