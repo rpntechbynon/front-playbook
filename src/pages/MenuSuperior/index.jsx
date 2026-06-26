@@ -1,5 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, Home, UserPlus, TrendingUp, Package, Sparkles, ClipboardList } from "lucide-react";
+import { Search, Home, UserPlus, TrendingUp, Package, Sparkles, ClipboardList, ArrowLeft } from "lucide-react";
+
+const SOLUTIONS_URL = "https://solutions.cellular.com.br/inicio";
 
 export default function MenuSuperior() {
   const location = useLocation();
@@ -41,29 +43,42 @@ export default function MenuSuperior() {
           </div>
         </div>
         
-        {/* Menu Items - Desktop */}
-        <ul className="hidden lg:flex gap-1 items-center">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            
-            return (
-              <li key={item.path}>
-                <Link 
-                  to={item.path} 
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors text-xs ${
-                    isActive 
-                      ? 'bg-red-500 text-white' 
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        {/* Menu Items + Voltar ao Solutions */}
+        <div className="flex items-center gap-2">
+          {/* Menu Items - Desktop */}
+          <ul className="hidden lg:flex gap-1 items-center">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+
+              return (
+                <li key={item.path}>
+                  <Link
+                    to={item.path}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors text-xs ${
+                      isActive
+                        ? 'bg-red-500 text-white'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Voltar ao Solutions */}
+          <a
+            href={SOLUTIONS_URL}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs text-gray-600 border border-gray-200 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+            title="Voltar para o Solutions"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Solutions</span>
+          </a>
+        </div>
       </div>
     </nav>
   );
