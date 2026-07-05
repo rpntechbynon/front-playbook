@@ -2,8 +2,12 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import MenuSuperior from "../MenuSuperior";
 import MenuLateral from "../../components/Menulateral";
 import MenuDireito from "../../components/MenuDireito";
-import { FileText, Image as ImageIcon, Download, ChevronLeft, ChevronRight, Loader2, ClipboardList, CheckCircle } from "lucide-react";
+import { FileText, Image as ImageIcon, Download, ChevronLeft, ChevronRight, Loader2, ClipboardList, CheckCircle, User } from "lucide-react";
 import API_BASE_URL from "../../config/api";
+import RespostaService from "../../services/RespostaService";
+import CpfModal from "../../components/CpfModal";
+import { maskCpf } from "../../utils/cpf";
+import { getAuthUser } from "../../utils/auth";
 
 // Componente otimizado para miniaturas com Intersection Observer
 const LazyThumbnail = ({ src, alt, isActive, onClick, index, currentIndex }) => {
@@ -83,9 +87,25 @@ export default function Trilha() {
 
   const [selectedFormularios, setSelectedFormularios] = useState([]);
   const [activeFormIndex, setActiveFormIndex] = useState(0);
-  const [respostas, setRespostas] = useState({});
+  // Respostas e status de finalização são guardados por formulário (não um único
+  // valor global) para que trocar de submenu/aba e voltar não apague o que já
+  // foi respondido naquele formulário.
+  const [respostasPorFormulario, setRespostasPorFormulario] = useState({});
   const [enviandoRespostas, setEnviandoRespostas] = useState(false);
-  const [respostaEnviada, setRespostaEnviada] = useState(false);
+  const [respostaEnviadaPorFormulario, setRespostaEnviadaPorFormulario] = useState({});
+  const autosaveTimeoutRef = useRef(null);
+  const autosaveInFlightRef = useRef(false);
+  const autosavePendingRef = useRef(false);
+  const [respostaErro, setRespostaErro] = useState(false);
+
+  const [cpfCliente, setCpfCliente] = useState("");
+  const [nomeCliente, setNomeCliente] = useState("");
+  const usuarioLogado = useMemo(() => getAuthUser(), []);
+  const userId = usuarioLogado?.id;
+  const [respostaIdPorFormulario, setRespostaIdPorFormulario] = useState({});
+  const [pendentePrompt, setPendentePrompt] = useState(null);
+  const [checkingPendentes, setCheckingPendentes] = useState(false);
+  const [finalizandoPendente, setFinalizandoPendente] = useState(false);
 
   // Função otimizada para pré-carregar imagens
   const preloadImage = useCallback((url) => {
@@ -112,8 +132,8 @@ export default function Trilha() {
     setCurrentSubmenuImageIndex(0);
     setSelectedFormularios(trilha?.formularios || []);
     setActiveFormIndex(0);
-    setRespostas({});
-    setRespostaEnviada(false);
+    setRespostaErro(false);
+    setPendentePrompt(null);
 
     if (!isSameTrilha) {
       setIsImageLoading(true);
@@ -133,8 +153,8 @@ export default function Trilha() {
     setCurrentSubmenuImageIndex(0);
     setSelectedFormularios(destination?.formularios || []);
     setActiveFormIndex(0);
-    setRespostas({});
-    setRespostaEnviada(false);
+    setRespostaErro(false);
+    setPendentePrompt(null);
 
     if (!isSameDestination) {
       setIsImageLoading(true);
@@ -179,8 +199,48 @@ export default function Trilha() {
     setSelectedFormularios(formularios);
     setSelectedSubmenuImages([]);
     setActiveFormIndex(0);
-    setRespostas({});
-    setRespostaEnviada(false);
+    setRespostaErro(false);
+    setPendentePrompt(null);
+  };
+
+  const handleConfirmCpf = ({ cpf, nome }) => {
+    setCpfCliente(cpf);
+    setNomeCliente(nome || "");
+  };
+
+  const handleTrocarCliente = () => {
+    setCpfCliente("");
+    setNomeCliente("");
+    setRespostaIdPorFormulario({});
+    setRespostasPorFormulario({});
+    setRespostaEnviadaPorFormulario({});
+    setPendentePrompt(null);
+    setRespostaErro(false);
+  };
+
+  const handleContinuarPendente = () => {
+    if (!pendentePrompt) return;
+    const respostasPrefill = {};
+    (pendentePrompt.itens || []).forEach((item) => {
+      respostasPrefill[item.pergunta_id] = item.valor;
+    });
+    setRespostasPorFormulario((prev) => ({ ...prev, [pendentePrompt.formulario_id]: respostasPrefill }));
+    setRespostaIdPorFormulario((prev) => ({ ...prev, [pendentePrompt.formulario_id]: pendentePrompt.id }));
+    setPendentePrompt(null);
+  };
+
+  const handleFinalizarPendente = async () => {
+    if (!pendentePrompt) return;
+    setFinalizandoPendente(true);
+    try {
+      await RespostaService.finalizar(pendentePrompt.id);
+      setRespostaIdPorFormulario((prev) => ({ ...prev, [pendentePrompt.formulario_id]: null }));
+      setPendentePrompt(null);
+    } catch (e) {
+      console.error("Erro ao finalizar atendimento pendente:", e);
+    } finally {
+      setFinalizandoPendente(false);
+    }
   };
 
   const getAllDocuments = useCallback(() => {
@@ -215,27 +275,59 @@ export default function Trilha() {
     return allDocs;
   }, [selectedTrilha]);
 
-  const enviarRespostas = async () => {
+  // Salva o atendimento incrementalmente: cria na primeira resposta, atualiza a
+  // cada mudança e finaliza sozinho quando todas as perguntas forem respondidas.
+  // Só roda enquanto o atendimento não estiver finalizado (respostaEnviada === false).
+  const enviarRespostas = useCallback(async () => {
     const formAtivo = selectedFormularios[activeFormIndex];
-    if (!formAtivo) return;
+    if (!formAtivo || !cpfCliente) return;
 
+    if (autosaveInFlightRef.current) {
+      autosavePendingRef.current = true;
+      return;
+    }
+
+    const respostasDoForm = respostasPorFormulario[formAtivo.id] || {};
     const perguntas = [...(formAtivo.perguntas || [])].sort((a, b) => a.ordem - b.ordem);
-    const respostasArray = perguntas.map(p => ({ pergunta_id: p.id, valor: respostas[p.id] }));
+    const respostasArray = perguntas
+      .filter(p => respostasDoForm[p.id] !== undefined)
+      .map(p => ({ pergunta_id: p.id, valor: respostasDoForm[p.id] }));
 
-    setEnviandoRespostas(true);
+    if (respostasArray.length === 0) return;
+
+    const finalizarAgora = respostasArray.length === perguntas.length;
+
+    autosaveInFlightRef.current = true;
+    setRespostaErro(false);
+    if (finalizarAgora) setEnviandoRespostas(true);
+
     try {
-      await fetch(`${API_BASE_URL}/formularios/${formAtivo.id}/respostas`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ respostas: respostasArray }),
+      const resultado = await RespostaService.salvarRespostas(formAtivo.id, {
+        cpfCliente,
+        nomeCliente,
+        respostaId: respostaIdPorFormulario[formAtivo.id] || undefined,
+        finalizar: finalizarAgora,
+        respostas: respostasArray,
+        userId,
       });
-      setRespostaEnviada(true);
+      if (resultado?.id) {
+        setRespostaIdPorFormulario(prev => ({ ...prev, [formAtivo.id]: resultado.id }));
+      }
+      if (finalizarAgora) {
+        setRespostaEnviadaPorFormulario(prev => ({ ...prev, [formAtivo.id]: true }));
+      }
     } catch (e) {
       console.error('Erro ao enviar respostas:', e);
+      setRespostaErro(true);
     } finally {
       setEnviandoRespostas(false);
+      autosaveInFlightRef.current = false;
+      if (autosavePendingRef.current) {
+        autosavePendingRef.current = false;
+        enviarRespostas();
+      }
     }
-  };
+  }, [selectedFormularios, activeFormIndex, cpfCliente, nomeCliente, respostasPorFormulario, respostaIdPorFormulario, userId]);
 
   const allDocuments = getAllDocuments();
   const hasAttachments = allDocuments.length > 0;
@@ -403,23 +495,64 @@ export default function Trilha() {
   }, []);
 
   const formAtivo = selectedFormularios[activeFormIndex] ?? null;
+  const respostas = respostasPorFormulario[formAtivo?.id] || {};
+  const respostaEnviada = respostaEnviadaPorFormulario[formAtivo?.id] || false;
   const perguntasDoForm = [...(formAtivo?.perguntas || [])].sort((a, b) => a.ordem - b.ordem);
   const totalPerguntas = perguntasDoForm.length;
   const respondidas = perguntasDoForm.filter(p => respostas[p.id] !== undefined).length;
   const hasFormularios = selectedFormularios.length > 0;
+  const precisaCpf = hasFormularios && !cpfCliente;
 
-  // Envia as respostas automaticamente assim que todas as perguntas forem respondidas
+  // Verifica se já existe um atendimento em andamento para este cliente e formulário
   useEffect(() => {
-    if (
-      totalPerguntas > 0 &&
-      respondidas === totalPerguntas &&
-      !respostaEnviada &&
-      !enviandoRespostas
-    ) {
-      enviarRespostas();
+    if (!cpfCliente || !formAtivo) {
+      setPendentePrompt(null);
+      return;
     }
+    if (Object.prototype.hasOwnProperty.call(respostaIdPorFormulario, formAtivo.id)) {
+      setPendentePrompt(null);
+      return;
+    }
+
+    let cancelled = false;
+    setCheckingPendentes(true);
+    RespostaService.listarPendentes({ cpfCliente, userId })
+      .then((lista) => {
+        if (cancelled) return;
+        const pendente = (lista || []).find(
+          (r) => (r.formulario_id ?? r.formulario?.id) === formAtivo.id
+        );
+        setPendentePrompt(pendente || null);
+      })
+      .catch(() => {
+        if (!cancelled) setPendentePrompt(null);
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingPendentes(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [respondidas, totalPerguntas, respostaEnviada, enviandoRespostas]);
+  }, [cpfCliente, formAtivo?.id]);
+
+  // Autosave: salva (cria/atualiza) o atendimento a cada resposta marcada, em
+  // segundo plano, sem o usuário perceber. Só ocorre enquanto o atendimento
+  // ainda não foi finalizado. Debounce evita uma requisição por clique quando
+  // o usuário responde várias perguntas em sequência rápida.
+  useEffect(() => {
+    if (!cpfCliente || pendentePrompt || respostaEnviada) return;
+    if (Object.keys(respostas).length === 0) return;
+
+    if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
+    autosaveTimeoutRef.current = setTimeout(() => {
+      enviarRespostas();
+    }, 500);
+
+    return () => clearTimeout(autosaveTimeoutRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [respostas, cpfCliente, pendentePrompt, respostaEnviada]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -456,7 +589,7 @@ export default function Trilha() {
                         {selectedFormularios.map((f, i) => (
                           <button
                             key={f.id}
-                            onClick={() => { setActiveFormIndex(i); setRespostas({}); setRespostaEnviada(false); }}
+                            onClick={() => { setActiveFormIndex(i); setRespostaErro(false); setPendentePrompt(null); }}
                             className={`px-3 py-2 text-xs font-medium border-b-2 whitespace-nowrap transition-colors ${
                               i === activeFormIndex
                                 ? 'border-red-500 text-red-600'
@@ -497,24 +630,77 @@ export default function Trilha() {
                               ))}
                             </div>
                             <button
-                              onClick={() => { setRespostas({}); setRespostaEnviada(false); }}
+                              onClick={() => {
+                                setRespostasPorFormulario(prev => ({ ...prev, [formAtivo.id]: {} }));
+                                setRespostaEnviadaPorFormulario(prev => ({ ...prev, [formAtivo.id]: false }));
+                                setRespostaErro(false);
+                                setRespostaIdPorFormulario(prev => ({ ...prev, [formAtivo.id]: null }));
+                              }}
                               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium text-sm rounded-md transition-colors"
                             >
                               Responder Novamente
                             </button>
                           </div>
+                        ) : precisaCpf ? (
+                          <CpfModal onConfirm={handleConfirmCpf} userId={userId} />
+                        ) : checkingPendentes ? (
+                          <div className="flex items-center justify-center gap-2 min-h-full p-6 text-gray-400 text-sm">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Verificando atendimentos em andamento...
+                          </div>
+                        ) : pendentePrompt ? (
+                          /* Atendimento em andamento encontrado */
+                          <div className="flex flex-col items-center justify-center min-h-full p-6 text-center">
+                            <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center mb-3">
+                              <ClipboardList className="w-6 h-6 text-amber-500" />
+                            </div>
+                            <h3 className="text-base font-bold text-gray-800 mb-1">Atendimento em andamento</h3>
+                            <p className="text-gray-500 text-xs mb-5 max-w-xs">
+                              Este cliente já tem respostas salvas para este checklist. Continue de onde parou ou finalize antes de iniciar um novo atendimento.
+                            </p>
+                            <div className="flex flex-col gap-2 w-full max-w-xs">
+                              <button
+                                onClick={handleContinuarPendente}
+                                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium text-sm rounded-md transition-colors"
+                              >
+                                Continuar de onde parou
+                              </button>
+                              <button
+                                onClick={handleFinalizarPendente}
+                                disabled={finalizandoPendente}
+                                className="px-4 py-2 text-gray-400 hover:text-gray-600 font-medium text-xs transition-colors disabled:opacity-50"
+                              >
+                                {finalizandoPendente ? 'Finalizando...' : 'Finalizar agora sem responder o restante'}
+                              </button>
+                            </div>
+                          </div>
                         ) : (
                           /* Formulário de perguntas */
                           <div className="p-5 max-w-xl mx-auto w-full">
-                            <div className="flex items-center gap-2.5 mb-4">
-                              <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <ClipboardList className="w-4 h-4 text-red-500" />
+                            <div className="flex items-center justify-between gap-2.5 mb-4">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <ClipboardList className="w-4 h-4 text-red-500" />
+                                </div>
+                                <div className="min-w-0">
+                                  <h2 className="text-sm font-bold text-gray-800 truncate">{formAtivo.titulo}</h2>
+                                  {formAtivo.descricao && (
+                                    <p className="text-gray-500 text-xs mt-0.5">{formAtivo.descricao}</p>
+                                  )}
+                                </div>
                               </div>
-                              <div className="min-w-0">
-                                <h2 className="text-sm font-bold text-gray-800 truncate">{formAtivo.titulo}</h2>
-                                {formAtivo.descricao && (
-                                  <p className="text-gray-500 text-xs mt-0.5">{formAtivo.descricao}</p>
-                                )}
+                              <div className="flex items-center gap-1 text-gray-400 flex-shrink-0">
+                                <User className="w-3.5 h-3.5" />
+                                <span className="text-xs">
+                                  {nomeCliente ? `${nomeCliente} — ` : ""}
+                                  {maskCpf(cpfCliente)}
+                                </span>
+                                <button
+                                  onClick={handleTrocarCliente}
+                                  className="text-xs text-red-500 hover:text-red-600 font-medium ml-1"
+                                >
+                                  trocar
+                                </button>
                               </div>
                             </div>
 
@@ -529,7 +715,7 @@ export default function Trilha() {
                                     </p>
                                     <div className="flex gap-2">
                                       <button
-                                        onClick={() => setRespostas(prev => ({ ...prev, [p.id]: true }))}
+                                        onClick={() => setRespostasPorFormulario(prev => ({ ...prev, [formAtivo.id]: { ...(prev[formAtivo.id] || {}), [p.id]: true } }))}
                                         className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
                                           resposta === true
                                             ? 'bg-green-500 text-white'
@@ -539,7 +725,7 @@ export default function Trilha() {
                                         Sim
                                       </button>
                                       <button
-                                        onClick={() => setRespostas(prev => ({ ...prev, [p.id]: false }))}
+                                        onClick={() => setRespostasPorFormulario(prev => ({ ...prev, [formAtivo.id]: { ...(prev[formAtivo.id] || {}), [p.id]: false } }))}
                                         className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
                                           resposta === false
                                             ? 'bg-red-500 text-white'
@@ -565,6 +751,18 @@ export default function Trilha() {
                                     Enviando...
                                   </span>
                                 )}
+                              </div>
+                            )}
+
+                            {respostaErro && !enviandoRespostas && (
+                              <div className="mt-3 flex items-center justify-between gap-3 px-3 py-2 rounded-md bg-red-50 border border-red-200">
+                                <span className="text-xs text-red-600">Erro ao enviar as respostas.</span>
+                                <button
+                                  onClick={enviarRespostas}
+                                  className="text-xs font-semibold text-red-600 hover:text-red-700"
+                                >
+                                  Tentar novamente
+                                </button>
                               </div>
                             )}
                           </div>

@@ -432,11 +432,15 @@ Registra o resultado de um atendimento — quais perguntas foram respondidas com
 
 ### `POST /api/formularios/{formulario_id}/respostas`
 
-Salva as respostas de um atendimento.
+Salva as respostas de um atendimento. Sem `resposta_id`, sempre cria um novo atendimento com status `em_andamento` já na primeira resposta. Os itens são gravados via `updateOrCreate`, então reenviar a mesma pergunta atualiza o valor em vez de duplicar.
 
 **Body:**
 ```json
 {
+  "cpf_cliente": "12345678900",
+  "nome_cliente": "João da Silva",
+  "resposta_id": 10,
+  "finalizar": true,
   "user_id": 3,
   "respostas": [
     { "pergunta_id": 1, "valor": true },
@@ -448,6 +452,10 @@ Salva as respostas de um atendimento.
 
 | Campo | Tipo | Obrigatório | Observação |
 |---|---|---|---|
+| `cpf_cliente` | string | sim | Apenas dígitos |
+| `nome_cliente` | string | não | Nome do cliente, coletado junto do CPF no primeiro atendimento |
+| `resposta_id` | integer | não | Envie para continuar um atendimento em andamento (retornado em `pendentes` ou na resposta de um `POST` anterior). Omitido = cria um novo atendimento |
+| `finalizar` | boolean | não | `true` marca o atendimento como concluído (status `concluido`); default `false` mantém `em_andamento` |
 | `user_id` | integer | não | Quando auth for implementado, vira automático |
 | `respostas` | array | sim | |
 | `respostas[].pergunta_id` | integer | sim | Deve pertencer ao formulário |
@@ -458,6 +466,9 @@ Salva as respostas de um atendimento.
 {
   "id": 1,
   "formulario_id": 1,
+  "cpf_cliente": "12345678900",
+  "nome_cliente": "João da Silva",
+  "status": "em_andamento",
   "user_id": 3,
   "created_at": "2026-06-26T14:30:00.000000Z",
   "user": { "id": 3, "name": "Rafael", "email": "rafael@..." },
@@ -493,6 +504,29 @@ Histórico de atendimentos, do mais recente ao mais antigo.
 
 ---
 
+### `GET /api/respostas/pendentes`
+
+Lista os atendimentos incompletos (status `em_andamento`), com formulário e itens já carregados. Use para oferecer "continuar de onde parou" antes de exibir um checklist.
+
+**Query params:**
+
+| Campo | Tipo | Obrigatório | Observação |
+|---|---|---|---|
+| `user_id` | integer | não | |
+| `cpf_cliente` | string | não | Apenas dígitos |
+
+**Resposta `200`:** array com a mesma estrutura do `POST /api/formularios/{formulario_id}/respostas`.
+
+---
+
+### `PUT /api/respostas/{id}/finalizar`
+
+Marca um atendimento como concluído sem precisar reenviar as respostas.
+
+**Resposta `200`:** o atendimento atualizado, com `status: "concluido"`.
+
+---
+
 ## Interfaces TypeScript
 
 ```ts
@@ -521,10 +555,23 @@ interface Pergunta {
 interface Resposta {
   id: number
   formulario_id: number
+  cpf_cliente: string
+  nome_cliente: string | null
+  status: 'em_andamento' | 'concluido'
   user_id: number | null
   created_at: string
   user: { id: number; name: string; email: string } | null
   itens: RespostaItem[]
+}
+
+// Body de POST /api/formularios/{formulario_id}/respostas
+interface RespostaPayload {
+  cpf_cliente: string
+  nome_cliente?: string
+  resposta_id?: number  // omitir = cria um novo atendimento
+  finalizar?: boolean   // true = marca como concluído
+  user_id?: number
+  respostas: { pergunta_id: number; valor: boolean }[]
 }
 
 interface RespostaItem {
