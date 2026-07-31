@@ -437,7 +437,7 @@ export default function Cadastro() {
 	};
 
 	const handleAddSubmenu = (etapaId) => {
-		setSubmenuData({ etapaId, titulo: "", descricao: "", arquivos: [], produtos: [], isEdit: false, submenuId: null });
+		setSubmenuData({ etapaId, titulo: "", descricao: "", arquivos: [], produtos: [], formularios: [], isEdit: false, submenuId: null });
 		setShowSubmenuForm(true);
 	};
 
