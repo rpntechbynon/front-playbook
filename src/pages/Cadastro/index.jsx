@@ -283,7 +283,7 @@ export default function Cadastro() {
 			}
 		}
 
-		setNovaEtapa({ trilhaId, parentId, titulo: "", descricao: "", ordem: proximaOrdem, arquivos: [], goTo: [], produtos: [], isEdit: false, etapaId: null });
+		setNovaEtapa({ trilhaId, parentId, titulo: "", descricao: "", ordem: proximaOrdem, arquivos: [], goTo: [], produtos: [], formularios: [], isEdit: false, etapaId: null });
 		setShowEtapaForm(true);
 	};
 
