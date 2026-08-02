@@ -35,6 +35,7 @@ export default function Cadastro() {
 	const [titulo, setTitulo] = useState("");
 	const [descricao, setDescricao] = useState("");
 	const [ordem, setOrdem] = useState(null);
+	const [publicado, setPublicado] = useState(false);
 	const [goToSelecionados, setGoToSelecionados] = useState([]);
 	const [formulariosTrilha, setFormulariosTrilha] = useState([]);
 	const [isEditingTrilha, setIsEditingTrilha] = useState(false);
@@ -78,6 +79,7 @@ export default function Cadastro() {
 		setTitulo("");
 		setDescricao("");
 		setOrdem(null);
+		setPublicado(false);
 		setGoToSelecionados([]);
 		setFormulariosTrilha([]);
 		setArquivos([]);
@@ -189,6 +191,7 @@ export default function Cadastro() {
 		setTitulo(trilha.nome || "");
 		setDescricao(trilha.descricao || "");
 		setOrdem(trilha.ordem || null);
+		setPublicado(trilha.publicado !== undefined ? !!trilha.publicado : false);
 		setGoToSelecionados(trilha.goTo ? trilha.goTo.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : []);
 		setFormulariosTrilha(trilha.formularios ? trilha.formularios.map(f => typeof f === 'object' ? f.id : f) : []);
 		setArquivos(trilha.documentos || []);
@@ -210,6 +213,7 @@ export default function Cadastro() {
 				titulo: titulo.trim(),
 				descricao: descricao.trim(),
 				ordem: ordem || null,
+				publicado,
 				go_to: goToSelecionados.length > 0 ? goToSelecionados.join(',') : null,
 				formularios: formulariosTrilha,
 				arquivos: arquivos.filter(a => a instanceof File)
@@ -702,6 +706,8 @@ export default function Cadastro() {
 								setDescricao={setDescricao}
 								ordem={ordem}
 								setOrdem={setOrdem}
+								publicado={publicado}
+								setPublicado={setPublicado}
 								arquivos={arquivos}
 								setArquivos={setArquivos}
 								goToSelecionados={goToSelecionados}

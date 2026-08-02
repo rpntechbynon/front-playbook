@@ -3,9 +3,11 @@ import API_BASE_URL from '../config/api';
 // Serviço para gerenciar trilhas de vendas (decisões)
 const TrilhaService = {
 	// Buscar todas as trilhas
-	async buscarTrilhas() {
+	// incluirRascunhos: quando true, retorna também as trilhas ainda não publicadas (uso do painel administrativo)
+	async buscarTrilhas(incluirRascunhos = false) {
 		try {
-			const response = await fetch(`${API_BASE_URL}/decisoes`);
+			const url = incluirRascunhos ? `${API_BASE_URL}/decisoes?todas=1` : `${API_BASE_URL}/decisoes`;
+			const response = await fetch(url);
 			if (!response.ok) {
 				throw new Error('Erro ao buscar trilhas');
 			}
@@ -56,12 +58,17 @@ const TrilhaService = {
 				formData.append('id_pai', dados.id_pai);
 				console.log('Enviando id_pai:', dados.id_pai);
 			}
-			
+
 			// Adicionar go_to se fornecido
 			if (dados.go_to) {
 				formData.append('go_to', dados.go_to);
 			}
-			
+
+			// Adicionar publicado se fornecido (tag de trilha pronta para exibição)
+			if (dados.publicado !== undefined && dados.publicado !== null) {
+				formData.append('publicado', dados.publicado ? 1 : 0);
+			}
+
 			// Adicionar produtos no formato correto: produtos[0][produto_id], produtos[0][recomendado], etc
 			if (dados.produtos && dados.produtos.length > 0) {
 				dados.produtos.forEach((produto, index) => {
@@ -70,7 +77,7 @@ const TrilhaService = {
 					formData.append(`produtos[${index}][ordem]`, produto.ordem !== undefined ? produto.ordem : index);
 				});
 			}
-			
+
 			// Adicionar formulários se fornecidos
 			if (dados.formularios && dados.formularios.length > 0) {
 				dados.formularios.forEach((id, index) => {
@@ -154,7 +161,12 @@ const TrilhaService = {
 			if (dados.go_to) {
 				formData.append('go_to', dados.go_to);
 			}
-			
+
+			// Adicionar publicado se fornecido (tag de trilha pronta para exibição)
+			if (dados.publicado !== undefined && dados.publicado !== null) {
+				formData.append('publicado', dados.publicado ? 1 : 0);
+			}
+
 			// Adicionar produtos no formato correto: produtos[0][produto_id], produtos[0][recomendado], etc
 			if (dados.produtos && dados.produtos.length > 0) {
 				dados.produtos.forEach((produto, index) => {
@@ -255,6 +267,7 @@ const TrilhaService = {
 			idPai: item.id_pai,
 			go_to: item.go_to,
 			goTo: item.go_to,
+			publicado: item.publicado !== undefined ? !!item.publicado : true,
 			created_at: item.created_at,
 			updated_at: item.updated_at,
 			criadoEm: item.created_at,
@@ -390,6 +403,7 @@ const TrilhaService = {
 			ordem: appData.ordem !== null && appData.ordem !== undefined ? appData.ordem : null,
 			id_pai: appData.id_pai || null,
 			go_to: appData.go_to || appData.goTo || null,
+			publicado: appData.publicado !== undefined ? appData.publicado : false,
 			arquivos: appData.arquivos || [],
 			produtos: appData.produtos || [],
 			formularios: appData.formularios || []
@@ -420,6 +434,11 @@ const TrilhaService = {
 			produtos: etapa.produtos || [],
 			formularios: etapa.formularios || []
 		};
+
+		// Adicionar publicado se fornecido (só faz sentido para a trilha raiz)
+		if (etapa.publicado !== undefined && etapa.publicado !== null) {
+			dados.publicado = etapa.publicado;
+		}
 
 		// Adicionar ordem se fornecido (aceita 0)
 		if (etapa.ordem !== null && etapa.ordem !== undefined) {

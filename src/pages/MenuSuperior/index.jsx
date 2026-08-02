@@ -1,20 +1,22 @@
 import { Link, useLocation } from "react-router-dom";
 import { Search, Home, UserPlus, TrendingUp, Package, Sparkles, ClipboardList, ArrowLeft } from "lucide-react";
+import { isAdmin } from "../../utils/auth";
 
 const SOLUTIONS_URL = "https://solutions.cellular.com.br/inicio";
 
 export default function MenuSuperior() {
   const location = useLocation();
+  const admin = isAdmin();
 
   const menuItems = [
     { path: "/home", label: "Home", icon: Home },
-    { path: "/cadastro", label: "Cadastro", icon: UserPlus },
-    { path: "/produtos", label: "Produtos", icon: Package },
-    { path: "/formularios", label: "Formulários", icon: ClipboardList },
+    { path: "/cadastro", label: "Cadastro", icon: UserPlus, adminOnly: true },
+    { path: "/produtos", label: "Produtos", icon: Package, adminOnly: true },
+    { path: "/formularios", label: "Formulários", icon: ClipboardList, adminOnly: true },
     { path: "/trilha", label: "Trilha de Vendas", icon: TrendingUp },
-    { path: "/tela", label: "PlayBook", icon: Sparkles },
-  ];
-  
+    { path: "/tela", label: "PlayBook", icon: Sparkles, adminOnly: true },
+  ].filter((item) => !item.adminOnly || admin);
+
   return (
     <nav className="w-full bg-white shadow-sm fixed top-0 left-0 z-50 border-b border-gray-200">
       <div className="max-w-full px-3 md:px-6 flex items-center justify-between h-14">

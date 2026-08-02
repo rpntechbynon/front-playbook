@@ -42,6 +42,15 @@ export function getAuthUser() {
 }
 
 /**
+ * Verifica se o usuário logado possui nível de acesso admin.
+ * @returns {boolean}
+ */
+export function isAdmin() {
+	const user = getAuthUser();
+	return user?.nivel_acesso === 'admin';
+}
+
+/**
  * Monta os headers de autenticação para requisições à API.
  * @returns {object}
  */

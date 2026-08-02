@@ -12,7 +12,7 @@ export const useTrilhas = () => {
 		setLoading(true);
 		setError(null);
 		try {
-			const dados = await TrilhaService.buscarTrilhas();
+			const dados = await TrilhaService.buscarTrilhas(true); // painel administrativo: inclui rascunhos
 			const trilhasFormatadas = TrilhaService.transformarParaFormato(dados);
 			console.log('Trilhas formatadas com submenus e produtos:', trilhasFormatadas);
 			setTrilhas(trilhasFormatadas);

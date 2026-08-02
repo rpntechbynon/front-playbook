@@ -24,26 +24,31 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
     }
   };
 
-  const expandParentsOfTrilha = (trilhaId) => {
-    const findAndExpandParents = (items, targetId, parents = []) => {
-      for (const item of items) {
-        if (item.id === targetId) {
-          const newExpanded = { ...expandedItems };
-          parents.forEach(parentId => {
-            newExpanded[parentId] = true;
-          });
-          setExpandedItems(newExpanded);
-          return true;
-        }
-        if (item.all_children && item.all_children.length > 0) {
-          if (findAndExpandParents(item.all_children, targetId, [...parents, item.id])) {
-            return true;
-          }
-        }
+  // Retorna o caminho (ids) da raiz até o item, incluindo o próprio item
+  const findPathToItem = (items, targetId, parents = []) => {
+    for (const item of items) {
+      const currentPath = [...parents, item.id];
+      if (item.id === targetId) {
+        return currentPath;
       }
-      return false;
-    };
-    findAndExpandParents(trilhas, trilhaId);
+      if (item.all_children && item.all_children.length > 0) {
+        const found = findPathToItem(item.all_children, targetId, currentPath);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const expandParentsOfTrilha = (trilhaId) => {
+    const path = findPathToItem(trilhas, trilhaId);
+    if (!path) return;
+
+    // Mantém expandido apenas o caminho até o item selecionado, fechando os demais ramos
+    const newExpanded = {};
+    path.forEach(id => {
+      newExpanded[id] = true;
+    });
+    setExpandedItems(newExpanded);
   };
 
   const filterTrilhas = (items, term) => {
@@ -75,13 +80,6 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
     if (item.all_children && item.all_children.length > 0) {
       item.all_children.forEach(child => expandAllParents(child, idsObj));
     }
-  };
-
-  const toggleExpand = (itemId) => {
-    setExpandedItems(prev => ({
-      ...prev,
-      [itemId]: !prev[itemId]
-    }));
   };
 
   // Conjunto de ids do caminho ativo: trilha selecionada + todos os seus pais
@@ -140,13 +138,23 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
 
   const handleItemClick = (item, hasChildrenItems) => {
     setSelectedTrilhaId(item.id);
-    
+
     if (onSelectTrilha) {
       onSelectTrilha(item);
     }
-    
+
     if (hasChildrenItems) {
-      toggleExpand(item.id);
+      const wasExpanded = expandedItems[item.id];
+      const path = findPathToItem(trilhas, item.id) || [item.id];
+
+      // Mantém expandido apenas o caminho até o item clicado, fechando os demais ramos abertos
+      const newExpanded = {};
+      path.forEach(id => {
+        newExpanded[id] = true;
+      });
+      newExpanded[item.id] = !wasExpanded;
+
+      setExpandedItems(newExpanded);
     }
   };
 

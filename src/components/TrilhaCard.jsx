@@ -1,5 +1,5 @@
 
-import { Edit, Trash2, Maximize2, FileText, Image, Menu, Package, GripVertical } from "lucide-react";
+import { Edit, Trash2, Maximize2, FileText, Image, Menu, Package, GripVertical, EyeOff } from "lucide-react";
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -38,7 +38,15 @@ export default function TrilhaCard({ trilha, onViewTree, onEdit, onDelete }) {
 						<GripVertical className="w-5 h-5" />
 					</div>
 					<div className="flex-1">
-						<h3 className="text-lg font-bold mb-1 line-clamp-2 text-gray-900">{trilha.nome}</h3>
+						<div className="flex items-center gap-2 mb-1">
+							<h3 className="text-lg font-bold line-clamp-2 text-gray-900">{trilha.nome}</h3>
+							{!trilha.publicado && (
+								<span className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-semibold rounded-full flex-shrink-0" title="Não visível para os usuários">
+									<EyeOff className="w-3 h-3" />
+									Rascunho
+								</span>
+							)}
+						</div>
 						<div className="flex items-center gap-3 text-xs text-gray-600">
 							<span className="flex items-center gap-1">
 								<FileText className="w-3 h-3" />

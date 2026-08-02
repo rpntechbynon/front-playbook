@@ -5,6 +5,11 @@ import Trilha from './pages/Trilha';
 import Produtos from './pages/Produtos';
 import Tela from './pages/Tela';
 import Formularios from './pages/Formularios';
+import { isAdmin } from './utils/auth';
+
+function RequireAdmin({ children }) {
+  return isAdmin() ? children : <Navigate to="/home" replace />;
+}
 
 function AppRouter() {
   return (
@@ -12,11 +17,11 @@ function AppRouter() {
       <Routes >
         <Route path="/home" element={<Home />} />
         <Route path="/about" element={<div>About Page</div>} />
-        <Route path="/cadastro" element={<Cadastro />} />
+        <Route path="/cadastro" element={<RequireAdmin><Cadastro /></RequireAdmin>} />
         <Route path="/trilha" element={<Trilha />} />
-        <Route path="/produtos" element={<Produtos />} />
-        <Route path="/tela" element={<Tela />} />
-        <Route path="/formularios" element={<Formularios />} />
+        <Route path="/produtos" element={<RequireAdmin><Produtos /></RequireAdmin>} />
+        <Route path="/tela" element={<RequireAdmin><Tela /></RequireAdmin>} />
+        <Route path="/formularios" element={<RequireAdmin><Formularios /></RequireAdmin>} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </Router>

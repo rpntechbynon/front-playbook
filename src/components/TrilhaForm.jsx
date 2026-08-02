@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Upload, X, Image, FileText, CheckSquare, Square, AlertCircle, Hash, Maximize2, Trash2, Loader2, ClipboardList } from "lucide-react";
+import { Plus, Upload, X, Image, FileText, CheckSquare, Square, AlertCircle, Hash, Maximize2, Trash2, Loader2, ClipboardList, Eye, EyeOff } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
 export default function TrilhaForm({
@@ -9,6 +9,8 @@ export default function TrilhaForm({
 	setDescricao,
 	ordem,
 	setOrdem,
+	publicado = false,
+	setPublicado,
 	arquivos = [],
 	setArquivos,
 	goToSelecionados,
@@ -86,6 +88,40 @@ export default function TrilhaForm({
 					className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${theme.bg.input} ${theme.border.input} ${theme.text.primary} ${theme.placeholder.input} ${isDarkMode ? 'focus:border-blue-500 focus:ring-blue-500/50' : 'focus:border-gray-600 focus:ring-gray-400'}`}
 				/>
 			</div>
+
+			{setPublicado && (
+				<div className="mb-6">
+					<div
+						onClick={() => setPublicado(!publicado)}
+						className={`flex items-center justify-between gap-3 p-4 border rounded-xl cursor-pointer transition-all ${
+							publicado
+								? isDarkMode ? 'bg-green-900/20 border-green-600/50' : 'bg-green-50 border-green-300'
+								: isDarkMode ? 'bg-amber-900/20 border-amber-600/50' : 'bg-amber-50 border-amber-300'
+						}`}
+					>
+						<div className="flex items-center gap-3">
+							{publicado ? (
+								<Eye className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+							) : (
+								<EyeOff className={`w-5 h-5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
+							)}
+							<div>
+								<p className={`font-semibold text-sm ${theme.text.primary}`}>
+									{publicado ? "Publicada" : "Rascunho (não visível para usuários)"}
+								</p>
+								<p className={`text-xs ${theme.text.tertiary}`}>
+									{publicado
+										? "Esta trilha está pronta e aparece para os usuários."
+										: "Marque como publicada quando a trilha estiver pronta para ser exibida."}
+								</p>
+							</div>
+						</div>
+						<div className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${publicado ? 'bg-green-500' : isDarkMode ? 'bg-slate-600' : 'bg-gray-300'}`}>
+							<div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${publicado ? 'translate-x-5' : 'translate-x-0.5'}`} />
+						</div>
+					</div>
+				</div>
+			)}
 
 		<div className="mb-6">
 			<label className={`block font-semibold mb-2 ${theme.text.secondary}`}>Descrição</label>
