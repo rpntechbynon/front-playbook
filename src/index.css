@@ -97,3 +97,32 @@ img[loading="eager"] {
 .will-change-opacity {
   will-change: opacity;
 }
+
+/* Widget de feedback */
+@keyframes feedback-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-feedback-pop {
+  animation: feedback-pop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes feedback-attention {
+  0%, 80%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  90% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+}
+
+.animate-feedback-attention {
+  animation: feedback-attention 3.5s ease-out infinite;
+}

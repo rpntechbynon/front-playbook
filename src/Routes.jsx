@@ -5,6 +5,7 @@ import Trilha from './pages/Trilha';
 import Produtos from './pages/Produtos';
 import Tela from './pages/Tela';
 import Formularios from './pages/Formularios';
+import FeedbackWidget from './components/FeedbackWidget';
 import { isAdmin } from './utils/auth';
 
 function RequireAdmin({ children }) {
@@ -24,6 +25,7 @@ function AppRouter() {
         <Route path="/formularios" element={<RequireAdmin><Formularios /></RequireAdmin>} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
+      <FeedbackWidget />
     </Router>
   );
 }
