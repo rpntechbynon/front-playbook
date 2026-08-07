@@ -17,7 +17,7 @@ export function maskCpf(value) {
  * @returns {string}
  */
 export function unmaskCpf(value) {
-	return value.replace(/\D/g, '');
+	return value.replace(/\D/g, ''); 
 }
 
 /**
