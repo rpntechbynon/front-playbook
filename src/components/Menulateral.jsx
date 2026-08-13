@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useImperativeHandle, forwardRef } from "react";
-import { ChevronDown, ChevronRight, BookOpen, Search, X, Loader2, Circle } from "lucide-react";
+import { ChevronDown, ChevronRight, BookOpen, Search, X, Loader2, Circle, EyeOff } from "lucide-react";
 import TrilhaService from "../services/TrilhaService";
 import { isAdmin } from "../utils/auth";
 
@@ -203,7 +203,7 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
           </div>
 
           {/* Texto */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex items-center gap-1.5">
             <div className={`text-xs truncate ${
               isSelected
                 ? 'text-red-700 font-bold'
@@ -213,6 +213,15 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
             }`}>
               {searchTerm ? highlightText(item.titulo || item.descricao, searchTerm) : (item.titulo || item.descricao)}
             </div>
+            {item.publicado === false && (
+              <span
+                className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-semibold rounded-full flex-shrink-0"
+                title="Não visível para os usuários"
+              >
+                <EyeOff className="w-2.5 h-2.5" />
+                Rascunho
+              </span>
+            )}
           </div>
 
           {/* Número/Badge */}
