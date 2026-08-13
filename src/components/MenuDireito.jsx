@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { MapPin, ExternalLink, ChevronRight, Layers, Navigation, Info, Package, CheckSquare, Image, FileText, X, ClipboardList } from "lucide-react";
 import TrilhaService from "../services/TrilhaService";
+import { isAdmin } from "../utils/auth";
 
 export default function MenuDireito({ selectedTrilha, onSelectDestination, isMinimized, onToggleMinimize, onSelectSubmenuImages, onSelectSubmenuFormularios }) {
   const [allTrilhas, setAllTrilhas] = useState([]);
@@ -82,7 +83,7 @@ export default function MenuDireito({ selectedTrilha, onSelectDestination, isMin
     };
 
     try {
-      const data = await TrilhaService.buscarTrilhas();
+      const data = await TrilhaService.buscarTrilhas(isAdmin());
       const trilhasFormatadas = TrilhaService.transformarParaFormato(data);
       const flattenedTrilhas = flattenTrilhas(trilhasFormatadas);
       setAllTrilhas(flattenedTrilhas);

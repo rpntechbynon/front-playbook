@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useImperativeHandle, forwardRef } from "react";
 import { ChevronDown, ChevronRight, BookOpen, Search, X, Loader2, Circle } from "lucide-react";
 import TrilhaService from "../services/TrilhaService";
+import { isAdmin } from "../utils/auth";
 
 const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
   const [expandedItems, setExpandedItems] = useState({});
@@ -13,7 +14,7 @@ const MenuLateral = forwardRef(({ onSelectTrilha }, ref) => {
   // Funções auxiliares declaradas antes do uso
   const fetchTrilhas = async () => {
     try {
-      const data = await TrilhaService.buscarTrilhas();
+      const data = await TrilhaService.buscarTrilhas(isAdmin());
       const trilhasFormatadas = TrilhaService.transformarParaFormato(data);
       setTrilhas(trilhasFormatadas);
       setFilteredTrilhas(trilhasFormatadas);
