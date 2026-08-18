@@ -511,6 +511,8 @@ export default function Cadastro() {
 					formData.append(`produtos[${index}][recomendado]`, produto.recomendado ? 1 : 0);
 					formData.append(`produtos[${index}][ordem]`, produto.ordem || index);
 				});
+			} else if (submenuData.isEdit) {
+				formData.append('produtos', '');
 			}
 
 			(submenuData.formularios || []).forEach((id, index) => {

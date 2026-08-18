@@ -168,14 +168,20 @@ const TrilhaService = {
 			}
 
 			// Adicionar produtos no formato correto: produtos[0][produto_id], produtos[0][recomendado], etc
-			if (dados.produtos && dados.produtos.length > 0) {
-				dados.produtos.forEach((produto, index) => {
-					formData.append(`produtos[${index}][produto_id]`, produto.produto_id);
-					formData.append(`produtos[${index}][recomendado]`, produto.recomendado ? 1 : 0);
-					formData.append(`produtos[${index}][ordem]`, produto.ordem !== undefined ? produto.ordem : index);
-				});
+			// Sempre enviar a chave "produtos" quando o campo foi fornecido (mesmo vazio), para que a API
+			// consiga distinguir "não alterar produtos" de "remover todos os produtos"
+			if (dados.produtos) {
+				if (dados.produtos.length > 0) {
+					dados.produtos.forEach((produto, index) => {
+						formData.append(`produtos[${index}][produto_id]`, produto.produto_id);
+						formData.append(`produtos[${index}][recomendado]`, produto.recomendado ? 1 : 0);
+						formData.append(`produtos[${index}][ordem]`, produto.ordem !== undefined ? produto.ordem : index);
+					});
+				} else {
+					formData.append('produtos', '');
+				}
 			}
-			
+
 			// Adicionar formulários se fornecidos
 			if (dados.formularios && dados.formularios.length > 0) {
 				dados.formularios.forEach((id, index) => {
