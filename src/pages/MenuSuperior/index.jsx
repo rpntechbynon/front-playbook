@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, Home, UserPlus, TrendingUp, Package, Sparkles, ClipboardList, ArrowLeft } from "lucide-react";
+import { Search, Home, UserPlus, TrendingUp, Package, Sparkles, ClipboardList, ArrowLeft, MessageSquareHeart } from "lucide-react";
 import { isAdmin } from "../../utils/auth";
 
 const SOLUTIONS_URL = "https://solutions.cellular.com.br/inicio";
@@ -13,6 +13,7 @@ export default function MenuSuperior() {
     { path: "/cadastro", label: "Cadastro", icon: UserPlus, adminOnly: true },
     { path: "/produtos", label: "Produtos", icon: Package, adminOnly: true },
     { path: "/formularios", label: "Formulários", icon: ClipboardList, adminOnly: true },
+    { path: "/feedbacks", label: "Feedbacks", icon: MessageSquareHeart, adminOnly: true },
     { path: "/trilha", label: "Trilha de Vendas", icon: TrendingUp },
     { path: "/tela", label: "PlayBook", icon: Sparkles, adminOnly: true },
   ].filter((item) => !item.adminOnly || admin);
